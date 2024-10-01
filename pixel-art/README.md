@@ -13,6 +13,4 @@ Fills squares with colour when clicked on. Able to change colour of squares with
 
 ## Credits
 
-This bit should describe what tools were used. For example:
-
 This project uses [p5.js](https://p5js.org).
