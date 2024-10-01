@@ -10,35 +10,24 @@
 *
 */
 
-
-let tileSize = 18; //size of each tile
-let colorPicker; //chose colour
-let clearButton; //clears canvas
-let erasorButton;//erases
+let tileSize = 18; // size of each tile
+let colorPicker; // color picker element
+let clearButton; // clear canvas button
+let erasing = false; // eraser toggle
 
 function setup() {
-    createCanvas(600, 600); //canvas size
-    noStroke(); //no tile borders
-    background(255); //background white
+    createCanvas(600, 600); // canvas size
+    noStroke(); // no tile borders
+    background(255); // background white
 
-    //create colourPicker
+    // create color picker
     colorPicker = createColorPicker('#ff0000');
-    colorPicker.position = ("620, 50");
+    colorPicker.position(620, 50);
 
-    //create canvas clearer
+    // create canvas clearer
     clearButton = createButton('Clear Canvas');
-    clearButton.position("620, 100");
+    clearButton.position(620, 100);
     clearButton.mousePressed(clearCanvas);
-
-    //erasor
-    erasorButton = createButton("Erase");
-    erasorButton.position("620, 150")
-    erasorButton.mousePressed(erase);
-
-}
-
-function erase() {
-
 }
 
 function clearCanvas() {
@@ -46,30 +35,37 @@ function clearCanvas() {
 }
 
 function draw() {
-    //when clicked the tile will turn to colour
+    //when clicked the tile will turn to colour or erase
     if (mouseIsPressed) {
-        //calculte where x-cordinate of tile's top-left corner is to where mouse is
+        // calculate where x-coordinate of tile's top-left corner is relative to the mouse
         let tileX = floor(mouseX / tileSize) * tileSize;
-        //used floor to round to get exact boarder outline
         let tileY = floor(mouseY / tileSize) * tileSize;
 
+        if (erasing) {
+            //fill the tile with white to erase
+            fill(255);
+        } else {
+            //get the color from the color picker
+            let selectedColor = colorPicker.color();
+            let red = color(255, 0, 0);
 
-        let selectedColor = colorPicker.color();
-        console.log(selectedColor);
-        let red = color(255, 0, 0);
-        if (selectedColor.toString() === red.toString()) {
-            let color1 = map(mouseX, 255, width, 0, 255); //color changes with mouseX
-            let color2 = map(mouseY, 255, length, 0, 255); //color changes with mouseY
-            fill(color1, color2, 255);//fill sqaures blue
-            rect(tileX, tileY, tileSize, tileSize); //draw coloured tile
+            //If the color is red, use defualt color changing based on mouse position
+            if (selectedColor.toString() === red.toString()) {
+                let color1 = map(mouseX, 255, width, 0, 255); //color changes with mouseX
+                let color2 = map(mouseY, 255, height, 0, 255); //color changes with mouseY
+                fill(color1, color2, 255); //fill squares with color based on mouse position
+            } else {
+                fill(colorPicker.color()); //fill with selected color
+            }
         }
-        else {
-            fill(colorPicker.color()); // Use the color selected by the color picker
-            rect(tileX, tileY, tileSize, tileSize); //draw coloured tile
-        }
+        //draw the tile
+        rect(tileX, tileY, tileSize, tileSize);
+    }
+}
 
-
-
-
+function keyPressed() {
+    //toggle eraser mode when e is pressed
+    if (key === 'E' || key === 'e') {
+        erasing = !erasing;
     }
 }
