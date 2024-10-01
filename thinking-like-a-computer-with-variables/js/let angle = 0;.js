@@ -5,8 +5,12 @@
 * 
 * A table where you can trace out any pixel art you want using your 
 * cursor to click and drag leaving behind a trail of rgb coloured tiles.
-* 
-
+*
+* Controls: cusor
+*
+* Uses: p5.js
+* https://p5js.org
+*
 * P.S I have used JavaScript before and I also know a fair bit about Java too.
 */
 
