@@ -54,7 +54,7 @@ const starCount = 100; // Number of stars
 // Score counter
 let score = 0;
 
-let stateFunction = game;
+let stateFunction = titleScreen;//Start with the title screen
 
 /**
  * Creates the canvas and initializes the fly
@@ -80,23 +80,11 @@ function draw() {
     stateFunction();
 }
 
-
-// function title() {
-//     background(255);
-
-//     push();
-//     textSize(80);
-//     textFont(BOLD);
-//     fill(0);
-//     text("FROLAGA", 150, 240);
-//     pop();
-
-//     mousePressed();
-// }
-
-// function mousePressed() {
-//     stateFunction == game();
-// }
+function titleScreen() {
+    drawStars();
+    displayTitle();
+    displayStartButton();
+}
 
 function game() {
     drawStars(); // Draw and move the stars
@@ -129,6 +117,30 @@ function drawStars() {
             star.x = random(0, width); // Reset to a random position at the top
         }
     }
+}
+
+function displayTitle() {
+    push();
+    fill("white");
+    textFont('Courier New');
+    textSize(40);
+    textAlign(CENTER);
+    text("FROGALA", width / 2, height / 2 - 20);
+    textSize(20);
+    text("A game of catching Alien Flies \n with your Tractor Tounge", width / 2, height / 2 + 20);
+    pop();
+}
+
+function displayStartButton() {
+    push();
+    fill("#55fff0");
+    rect(width / 2 - 70, height / 2 + 60, 140, 40, 5);//Start button rectangle
+    fill("black");
+    textFont('Courier New');
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    text("Start", width / 2, height / 2 + 80);//Start button text
+    pop();
 }
 
 /**
@@ -254,12 +266,12 @@ function drawShip() {
     fill("#3e8e41"); // Metallic frog-green color
     stroke("#2c5f2d"); // Darker green outline for metallic effect
     strokeWeight(4);
-    ellipse(ship.body.x, ship.body.y, ship.body.size, ship.body.size * 0.8); // Slightly oval-shaped main body
+    ellipse(ship.body.x, ship.body.y, ship.body.size, ship.body.size * 0.8); // Slightly oval shaped main body
     pop();
 
-    // Frog-like "eye modules" (futuristic cameras or sensors)
+    // Frog like eye cylinders (futuristic cameras or sensors)
     push();
-    fill("#d1f7ff"); // Sci-fi blue-white for the eyes
+    fill("#d1f7ff"); // Sci-fi blue & white for the eyes
     stroke("#55fff0");
     strokeWeight(3);
     ellipse(ship.body.x - 50, ship.body.y - 40, 50, 30); // Left eye module
@@ -268,32 +280,6 @@ function drawShip() {
     fill("#55fff0"); // Glowing pupils
     ellipse(ship.body.x - 50, ship.body.y - 40, 15);
     ellipse(ship.body.x + 50, ship.body.y - 40, 15);
-    pop();
-
-    // A frog-like mouth that looks like a landing ramp
-    push();
-    stroke("#2c5f2d");
-    strokeWeight(3);
-    noFill();
-    arc(ship.body.x, ship.body.y + 30, 80, 40, 0, PI); // Smiling arc for the mouth
-
-    // Add small panel lines to hint at a retractable ramp
-    line(ship.body.x - 20, ship.body.y + 30, ship.body.x + 20, ship.body.y + 30);
-    pop();
-
-    // Draw sleek "frog legs" (landing gear)
-    push();
-    fill("#2c5f2d");
-    noStroke();
-    ellipse(ship.body.x - 60, ship.body.y + 60, 30, 15); // Left leg
-    ellipse(ship.body.x + 60, ship.body.y + 60, 30, 15); // Right leg
-    pop();
-
-    // Draw subtle exhaust ports on the sides
-    push();
-    fill("#a0a0a0"); // Metallic gray exhausts
-    ellipse(ship.body.x - 80, ship.body.y, 10, 20); // Left exhaust port
-    ellipse(ship.body.x + 80, ship.body.y, 10, 20); // Right exhaust port
     pop();
 }
 // counter = 0;
@@ -335,7 +321,10 @@ function displayScore() {
  * Launch the beam on click (if it's not launched yet)
  */
 function mousePressed() {
-
+    // If the mouse is pressed on the location of the button:
+    if (mouseX > width / 2 - 70 && mouseX < width / 2 + 70 && mouseY > height / 2 + 60 && mouseY < height / 2 + 100) {
+        stateFunction = game; // Change the title page to the game page when button is clicked
+    }
     if (ship.beam.state === "idle") {
         ship.beam.state = "outbound";
     }
