@@ -15,6 +15,8 @@
  * New feature: Changing the frog to a frog space ship 
  * Changing Fly to alien fly
  * Changing background to star movement going downwards
+ * Added a Score System
+ * Changed the fly spawn to spawn on both sides and in waves moving faster and randomly
  */
 
 "use strict";
@@ -22,7 +24,7 @@
 // Our ship (space toad)
 const ship = {
     body: {
-        //The ship's body and size
+        // The ship's body and size
         x: 320,
         y: 520,
         size: 150
@@ -38,14 +40,14 @@ const ship = {
     }
 };
 
-// Our Alien-fly
-// Has a position, size, and speed of horizontal movement
-const fly = {
-    x: 0,
-    y: 200, // Will be random
-    size: 10,
-    speed: 3
-};
+// Alien-fly
+const MAX_WAVES = 5; // Constant for wave configurations
+let currentWave = 1;
+let flies = [];
+let fliesPerWave = 5; // Initial count of flies per wave
+let caughtFlies = 0;
+let waveCooldown = 0; // Timer for cooldown between waves
+let particles = []; // Particle effect array
 
 // Starfield (array to store stars)
 let stars = [];
@@ -53,7 +55,6 @@ const starCount = 100; // Number of stars
 
 // Score counter
 let score = 0;
-
 let stateFunction = titleScreen;//Start with the title screen
 
 /**
@@ -71,9 +72,8 @@ function setup() {
             speed: random(1, 3) // Different stars move at different speeds
         });
     }
-
-    // Give the fly its first random position
-    resetFly();
+    // Give the flies their first position
+    initializeWave();
 }
 
 function draw() {
@@ -88,14 +88,92 @@ function titleScreen() {
 
 function game() {
     drawStars(); // Draw and move the stars
-    moveFly();
-    drawFly();
-    moveShip();
-    moveBeam();
-    drawShip();
-    checkBeamOverlap();
+    if (waveCooldown > 0) {
+        // Display wave start message during cooldown
+        displayWaveStartMessage();
+        waveCooldown--;
+    } else {
+        moveFlies();// Move flies in pattern
+        drawFlies(); // Draws flies
+        moveShip();
+        moveBeam();
+        drawShip();
+        checkBeamOverlap();
+        drawParticles();
+    }
     displayScore();// Write out score
 }
+
+/**
+ * Initializes a new wave of flies with random patterns, staggered spawn times, and side-based variations.
+ */
+function initializeWave() {
+    flies = [];
+    let speed = 2 + currentWave; // Base speed increases per wave
+
+    for (let i = 0; i < fliesPerWave; i++) {
+        // Decide starting side and delay for each fly
+        let startX = i % 2 === 0 ? 0 : width; // Alternates start side
+        let direction = startX === 0 ? 1 : -1; // Direction based on start side
+        let yPos = random(50, height / 2); // Random Y position
+        let flySpeed = speed * direction * random(0.8, 1.2); // Random speed variation
+
+        // Color and smaller size based on side
+        let flyColor = startX === 0 ? "#8aff8a" : "#ff8a8a"; // Left: greenish, Right: reddish
+        let spawnDelay = int(random(30, 120)); // Random spawn delay
+
+        flies.push({
+            x: startX,
+            y: yPos,
+            size: 5, // Start small for animation
+            targetSize: 20, // Final size for active flies
+            color: flyColor,
+            originalColor: flyColor,
+            speed: flySpeed,
+            delay: spawnDelay,
+            active: false,
+            captured: false
+        });
+    }
+}
+
+/**
+ * Creates particle effect around the fly.
+ */
+function createParticles(fly) {
+    for (let i = 0; i < 10; i++) {
+        particles.push({
+            x: fly.x,
+            y: fly.y,
+            size: random(2, 5),
+            color: fly.color,
+            xSpeed: random(-2, 2),
+            ySpeed: random(-2, 2),
+            lifespan: 30
+        });
+    }
+}
+
+/**
+ * Moves particles and reduces lifespan.
+ */
+function drawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        fill(p.color);
+        noStroke();
+        ellipse(p.x, p.y, p.size);
+
+        p.x += p.xSpeed;
+        p.y += p.ySpeed;
+        p.lifespan--;
+
+        if (p.lifespan <= 0) {
+            particles.splice(i, 1); // Remove particle when lifespan is over
+        }
+    }
+}
+
 
 /**
  * Draws and animates the starfield background
@@ -119,6 +197,9 @@ function drawStars() {
     }
 }
 
+/**
+ * Displays the title and description of the game on the title screen
+ */
 function displayTitle() {
     push();
     fill("white");
@@ -131,6 +212,9 @@ function displayTitle() {
     pop();
 }
 
+/**
+ * Start button to start the game from the title screen
+ */
 function displayStartButton() {
     push();
     fill("#55fff0");
@@ -144,73 +228,129 @@ function displayStartButton() {
 }
 
 /**
- * Moves the fly according to its speed
- * Resets the fly if it gets all the way to the right
+ * Moves each fly of the current wave across the screen
  */
-function moveFly() {
-    // Move the fly
-    fly.x += fly.speed;
-    // Handle the fly going off the canvas
-    if (fly.x > width) {
-        resetFly();
+function moveFlies() {
+    for (let fly of flies) {
+        if (!fly.active) {
+            // Decrement delay and activate fly when delay reaches zero
+            fly.delay--;
+            if (fly.delay <= 0) {
+                fly.active = true;
+                createParticles(fly); // Particle effect on activation
+            }
+        } else if (fly.captured) {
+            // Move captured fly toward the ship
+            fly.x = lerp(fly.x, ship.body.x, 0.05);
+            fly.y = lerp(fly.y, ship.body.y, 0.05);
+            if (dist(fly.x, fly.y, ship.body.x, ship.body.y) < 10) {
+                flies.splice(flies.indexOf(fly), 1); // Remove when close to ship
+                score++;
+                caughtFlies++;
+                if (caughtFlies >= fliesPerWave) resetWave();
+            }
+        } else {
+            // Animate the activation effect by increasing fly size to targetSize
+            if (fly.size < fly.targetSize) {
+                fly.size += 0.5; // Animate to normal size
+            }
+            // Move active flies
+            fly.x += fly.speed;
+            if (fly.x > width || fly.x < 0) {
+                fly.speed *= -1; // Bounce back at screen edges
+            }
+        }
     }
 }
 
 /**
- * Draws the alien-fly hybrid with simple, quirky features.
+ * Draws the alien-fly hybrid with colour and variation
  */
-function drawFly() {
+function drawFlies() {
+    for (let fly of flies) {
+        if (fly.active) {
+            push();
+            noStroke();
+            fill(fly.color); // Use color based on side
+
+            // Head: Slightly oval-shaped to blend alien and insect vibes
+            ellipse(fly.x, fly.y, fly.size * 2, fly.size * 1.5);
+
+            // Eyes: Glowing, alien-like
+            fill("white");
+            ellipse(fly.x - 5, fly.y - 5, 10, 12); // Left eye
+            ellipse(fly.x + 5, fly.y - 5, 10, 12); // Right eye
+
+            fill("#55fff0"); // Glow effect for the pupils
+            ellipse(fly.x - 5, fly.y - 5, 5); // Left pupil
+            ellipse(fly.x + 5, fly.y - 5, 5); // Right pupil
+
+            // Antennae: Short, insect-like feel
+            stroke("#8aff8a");
+            strokeWeight(2);
+            line(fly.x - 7, fly.y - 15, fly.x - 10, fly.y - 25); // Left antenna
+            line(fly.x + 7, fly.y - 15, fly.x + 10, fly.y - 25); // Right antenna
+
+            // Wings: Transparent with a subtle glow
+            fill(255, 255, 255, 100); // Transparent white
+            ellipse(fly.x - 10, fly.y, 15, 30); // Left wing
+            ellipse(fly.x + 10, fly.y, 15, 30); // Right wing
+
+            // Body: Small and rounded like an insect's thorax
+            fill("#6aff6a");
+            ellipse(fly.x, fly.y + 10, fly.size, fly.size * 1.2);
+
+            // Tiny Legs: Bug-like dangling limbs
+            stroke("#6aff6a");
+            strokeWeight(2);
+            line(fly.x - 5, fly.y + 15, fly.x - 5, fly.y + 25); // Left leg
+            line(fly.x + 5, fly.y + 15, fly.x + 5, fly.y + 25); // Right leg
+
+            pop();
+        }
+    }
+}
+
+/**
+ * Displays a "Wave Start" message at the beginning of each wave.
+ */
+function displayWaveStartMessage() {
     push();
-    noStroke();
-
-    // Head: Slightly oval-shaped to blend alien and insect vibes
-    fill("#8aff8a"); // Alien-green color
-    ellipse(fly.x, fly.y, fly.size * 2, fly.size * 1.5);
-
-    // Eyes: Glowing, alien-like
     fill("white");
-    ellipse(fly.x - 5, fly.y - 5, 10, 12); // Left eye
-    ellipse(fly.x + 5, fly.y - 5, 10, 12); // Right eye
-
-    fill("#55fff0"); // Glow effect for the pupils
-    ellipse(fly.x - 5, fly.y - 5, 5); // Left pupil
-    ellipse(fly.x + 5, fly.y - 5, 5); // Right pupil
-
-    // Antennae: Short, insect-like feel
-    stroke("#8aff8a");
-    strokeWeight(2);
-    line(fly.x - 7, fly.y - 15, fly.x - 10, fly.y - 25); // Left antenna
-    line(fly.x + 7, fly.y - 15, fly.x + 10, fly.y - 25); // Right antenna
-
-    // Wings: Transparent with a subtle glow
-    fill(255, 255, 255, 100); // Transparent white
-    ellipse(fly.x - 10, fly.y, 15, 30); // Left wing
-    ellipse(fly.x + 10, fly.y, 15, 30); // Right wing
-
-    // Body: Small and rounded like an insect's thorax
-    fill("#6aff6a");
-    ellipse(fly.x, fly.y + 10, fly.size, fly.size * 1.2);
-
-    // Tiny Legs: Bug-like dangling limbs
-    stroke("#6aff6a");
-    strokeWeight(2);
-    line(fly.x - 5, fly.y + 15, fly.x - 5, fly.y + 25); // Left leg
-    line(fly.x + 5, fly.y + 15, fly.x + 5, fly.y + 25); // Right leg
-
+    textFont('Courier New');
+    textSize(30);
+    textAlign(CENTER, CENTER);
+    text(`Wave ${currentWave}`, width / 2, height / 2);
     pop();
 }
 
 /**
- * Resets the fly to the left with a random y
+ * Resets the flies when all are caught.
  */
-function resetFly() {
-    fly.x = 0;
-    fly.y = random(0, 300);
+function resetWave() {
+    caughtFlies = 0;
+    if (currentWave < MAX_WAVES) {
+        currentWave++;
+        fliesPerWave += 3; // Increase flies per wave
+        waveCooldown = 60; // Set cooldown duration for the wave start message
+        initializeWave();
+    } else {
+        stateFunction = titleScreen; // Reset to title after last wave
+    }
 }
+
+// /**
+//  * Resets the fly to the left with a random y
+//  */
+// function resetFly() {
+//     fly.x = 0;
+//     fly.y = random(0, 300);
+// }
 
 /**
  * Moves the ship to the mouse position on x
  */
+
 function moveShip() {
     ship.body.x = mouseX;
 }
@@ -235,16 +375,17 @@ function moveBeam() {
     }
     // If the beam is inbound, it moves down
     else if (ship.beam.state === "inbound") {
-        ship.beam.y += ship.beam.speed;
-        // The beam stops if it hits the bottom
-        if (ship.beam.y >= height) {
-            ship.beam.state = "idle";
+        // Move the beam down toward the frog spaceship
+        if (ship.beam.y < ship.body.y) {
+            ship.beam.y += ship.beam.speed; // Move down to the frog's position
+        } else {
+            ship.beam.state = "idle"; // Reset to idle when it reaches the frog
         }
     }
 }
 
 /**
- * Draws a hybrid frog-spaceship with sci-fi and organic elements.
+ * Draws a hybrid frog-spaceship 
  */
 function drawShip() {
     // Draw the beam tip
@@ -288,20 +429,23 @@ function drawShip() {
  * Handles the beam overlapping the fly
  */
 function checkBeamOverlap() {
-    // Get distance from beam to fly
-    const d = dist(ship.beam.x, ship.beam.y, fly.x, fly.y);
-    // Check if it's an overlap
-    const eaten = (d < ship.beam.size / 2 + fly.size / 2);
-    if (eaten) {
-        // Reset the fly
-        // counter++;
-        // for (starter = 0; starter < counter; starter++) {
-        resetFly();
-        // }
-
-        // Bring back the beam
-        ship.beam.state = "inbound";
-        score++; // Increase score
+    for (let i = flies.length - 1; i >= 0; i--) {
+        // Get distance from beam to fly
+        const fly = flies[i];
+        if (fly.active && !fly.captured) {
+            const d = dist(ship.beam.x, ship.beam.y, fly.x, fly.y);
+            // Check if it's an overlap
+            if (d < ship.beam.size / 2 + fly.size / 2) {
+                fly.color = "#ffffff"; // Flash effect
+                fly.captured = true; // Set to captured state
+                createParticles(fly); // Create particles for the caught fly
+                ship.beam.state = "inbound"; // Change beam state to inbound
+                fly.x = ship.beam.x; // Set fly's x position to the beam's x
+                fly.y = ship.beam.y; // Set fly's y position to the beam's y
+                setTimeout(() => (fly.color = fly.originalColor), 100); // Reset color after flash
+                break;
+            }
+        }
     }
 }
 
