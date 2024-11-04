@@ -17,9 +17,12 @@
  * Changing background to star movement going downwards
  * Added a Score System
  * Changed the fly spawn to spawn on both sides and in waves moving faster and randomly
+ * Added a title screen
+ * Particle effects
  */
 
 "use strict";
+
 
 // Our ship (space toad)
 const ship = {
@@ -41,10 +44,10 @@ const ship = {
 };
 
 // Alien-fly
-const MAX_WAVES = 5; // Constant for wave configurations
+const maxWaves = 5; // Constant for wave configurations
 let currentWave = 1;
 let flies = [];
-let fliesPerWave = 5; // Initial count of flies per wave
+let fliesPerWave = 5; // Starting count of flies per wave
 let caughtFlies = 0;
 let waveCooldown = 0; // Timer for cooldown between waves
 let particles = []; // Particle effect array
@@ -57,8 +60,24 @@ const starCount = 100; // Number of stars
 let score = 0;
 let stateFunction = titleScreen;//Start with the title screen
 
+// Boss (Sci-Fi Bird) Configuration
+const boss = {
+    x: 320,
+    y: -200,
+    width: 300,
+    height: 200,
+    beakWidth: 100,
+    beakHeight: 120,
+    health: 20,
+    attackCooldown: 120, // Cooldown between each attack sequence
+    attackWarning: false,
+    attackWarningCooldown: 0,
+    active: false,
+    attackPhase: 0 // Tracks the attack phase (0 = center, 1 = left, 2 = right)
+};
+
 /**
- * Creates the canvas and initializes the fly
+ * Creates the canvas and sets up the fly
  */
 function setup() {
     createCanvas(640, 480);
@@ -73,19 +92,28 @@ function setup() {
         });
     }
     // Give the flies their first position
-    initializeWave();
+    makeWave();
 }
 
+/**
+ * Draws the stateFunctioj
+ */
 function draw() {
     stateFunction();
 }
 
+/**
+ * Holds the title page by calling all the title page functions
+ */
 function titleScreen() {
     drawStars();
     displayTitle();
     displayStartButton();
 }
 
+/**
+ * Holds the main game page and calls all the rest of the primary functions
+ */
 function game() {
     drawStars(); // Draw and move the stars
     if (waveCooldown > 0) {
@@ -100,14 +128,23 @@ function game() {
         drawShip();
         checkBeamOverlap();
         drawParticles();
+        displayScore();// Write out score
     }
-    displayScore();// Write out score
+    // Trigger boss battle once waves are done
+    if (currentWave > maxWaves && boss.active) {
+        drawBoss();
+        handleBossAttack();
+    }
+    if (boss.active) {
+        drawBoss();
+        handleBossAttack();
+    }
 }
 
 /**
- * Initializes a new wave of flies with random patterns, staggered spawn times, and side-based variations.
+ * Makes a new wave of flies with random patterns and seperate spawn times
  */
-function initializeWave() {
+function makeWave() {
     flies = [];
     let speed = 2 + currentWave; // Base speed increases per wave
 
@@ -173,7 +210,6 @@ function drawParticles() {
         }
     }
 }
-
 
 /**
  * Draws and animates the starfield background
@@ -329,28 +365,124 @@ function displayWaveStartMessage() {
  */
 function resetWave() {
     caughtFlies = 0;
-    if (currentWave < MAX_WAVES) {
+    if (currentWave < maxWaves) {
         currentWave++;
         fliesPerWave += 3; // Increase flies per wave
         waveCooldown = 60; // Set cooldown duration for the wave start message
-        initializeWave();
+        makeWave();
     } else {
-        stateFunction = titleScreen; // Reset to title after last wave
+        // After the final wave, start the boss battle instead of resetting to the title screen
+        startBossBattle(); // Activate the boss battle
     }
 }
 
-// /**
-//  * Resets the fly to the left with a random y
-//  */
-// function resetFly() {
-//     fly.x = 0;
-//     fly.y = random(0, 300);
-// }
+/**
+ * Starts the boss battle with it's starting attributes
+ */
+function startBossBattle() {
+    boss.active = true;
+    boss.health = 20;
+    boss.attackCooldown = 120;
+}
+
+/**
+ * Draws the bird looking boss
+ */
+function drawBoss() {
+    if (boss.health <= 0) {
+        stateFunction = victoryScreen;
+        return;
+    }
+
+    // Draw the main body of the bird
+    push();
+    fill("#444");
+    noStroke();
+    ellipse(boss.x, boss.y, boss.width, boss.height);
+
+    // Draw the wings
+    fill("#666");
+    ellipse(boss.x - boss.width * 0.6, boss.y + 30, boss.width * 0.7, boss.height * 0.5);
+    ellipse(boss.x + boss.width * 0.6, boss.y + 30, boss.width * 0.7, boss.height * 0.5);
+
+    // Draw the eyes
+    fill("red");
+    ellipse(boss.x - 40, boss.y - 30, 20, 30);
+    ellipse(boss.x + 40, boss.y - 30, 20, 30);
+    fill("yellow");
+    ellipse(boss.x - 40, boss.y - 30, 10, 15);
+    ellipse(boss.x + 40, boss.y - 30, 10, 15);
+
+    // Draw the beak based on the attack phase
+    if (boss.attackWarning) {
+        fill("yellow");
+        textSize(30);
+        textAlign(CENTER, CENTER);
+        text("WARNING!", boss.attackTargetX, boss.attackTargetY - 50);
+    } else {
+        fill("#333");
+        triangle(
+            boss.x, boss.y, // Top of the beak
+            boss.attackTargetX - boss.beakWidth / 2, boss.attackTargetY, // Left corner of beak
+            boss.attackTargetX + boss.beakWidth / 2, boss.attackTargetY // Right corner of beak
+        );
+    }
+
+    pop();
+
+    // Display boss health
+    fill("white");
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    text(`BOSS HEALTH: ${boss.health}`, width / 2, 50);
+}
+
+function handleBossAttack() {
+    if (boss.attackCooldown > 0) {
+        boss.attackCooldown--;
+    } else if (!boss.attackWarning) {
+        // Start warning phase for the current attack
+        boss.attackWarning = true;
+        boss.attackWarningCooldown = 60; // Warning duration
+
+        // Set attack target position based on phase
+        if (boss.attackPhase === 0) { // Center attack
+            boss.attackTargetX = width / 2;
+            boss.attackTargetY = height / 2;
+        } else if (boss.attackPhase === 1) { // Left attack
+            boss.attackTargetX = width / 3;
+            boss.attackTargetY = height / 2;
+        } else if (boss.attackPhase === 2) { // Right attack
+            boss.attackTargetX = (2 * width) / 3;
+            boss.attackTargetY = height / 2;
+        }
+    } else if (boss.attackWarning && boss.attackWarningCooldown > 0) {
+        boss.attackWarningCooldown--;
+        if (boss.attackWarningCooldown === 0) {
+            boss.attackWarning = false;
+            boss.isAttacking = true;
+        }
+    } else if (boss.isAttacking) {
+        // Move the beak down towards the target
+        boss.y += 10;
+        if (boss.y > boss.attackTargetY) {
+            // Check for collision with the ship
+            if (dist(boss.attackTargetX, boss.attackTargetY, ship.body.x, ship.body.y) < boss.beakWidth / 2) {
+                stateFunction = gameOverScreen;
+            }
+
+            // Reset position and prepare for next attack
+            boss.isAttacking = false;
+            boss.y = -200; // Reset the bird's position to top
+            boss.attackPhase = (boss.attackPhase + 1) % 3; // Cycle through center, left, right
+            boss.attackCooldown = 120; // Cooldown before next attack sequence
+        }
+    }
+}
 
 /**
  * Moves the ship to the mouse position on x
  */
-
 function moveShip() {
     ship.body.x = mouseX;
 }
@@ -385,7 +517,7 @@ function moveBeam() {
 }
 
 /**
- * Draws a hybrid frog-spaceship 
+ * Draws a frog spaceship 
  */
 function drawShip() {
     // Draw the beam tip
@@ -447,6 +579,31 @@ function checkBeamOverlap() {
             }
         }
     }
+    if (boss.active && dist(ship.beam.x, ship.beam.y, boss.x, boss.y) < boss.width / 2) {
+        boss.health--;
+    }
+}
+
+/**
+ * Shows the game over screen if game loss
+ */
+function gameOverScreen() {
+    background("black");
+    fill("red");
+    textSize(50);
+    textAlign(CENTER, CENTER);
+    text("GAME OVER", width / 2, height / 2);
+}
+
+/**
+ * Shows the victory screen if game won
+ */
+function victoryScreen() {
+    background("black");
+    fill("green");
+    textSize(50);
+    textAlign(CENTER, CENTER);
+    text("YOU WIN!", width / 2, height / 2);
 }
 
 /**
