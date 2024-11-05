@@ -19,12 +19,14 @@
  * Changed the fly spawn to spawn on both sides and in waves moving faster and randomly
  * Added a title screen
  * Particle effects
+ * Added a win condition with win page and lose page
+ * Added multiple tongues
  */
 
 "use strict";
 
 
-// Our ship (space toad)
+// The ship (space frog)
 const ship = {
     body: {
         // The ship's body and size
@@ -40,11 +42,31 @@ const ship = {
         speed: 20,
         // Determines how the beam moves each frame
         state: "idle" // State can be: idle, outbound, inbound
+    },
+    secondBeam: { // Second beam for power-up
+        x: undefined,
+        y: 480,
+        size: 20,
+        speed: 20,
+        state: "idle" // Second beam's state
+    },
+    thirdBeam: { // Third beam
+        x: undefined,
+        y: 480,
+        size: 20,
+        speed: 20,
+        state: "idle" // Third beam's state
     }
 };
 
+
+const winScore = 1000; // Winning score condition
+const maxWaves = 100; // Constant for wave configurations
+
+let doubleBeamUnlocked = false; // Power-up for double beam
+let tripleBeamUnlocked = false; // Third beam power-up
+
 // Alien-fly
-const maxWaves = 5; // Constant for wave configurations
 let currentWave = 1;
 let flies = [];
 let fliesPerWave = 5; // Starting count of flies per wave
@@ -60,21 +82,6 @@ const starCount = 100; // Number of stars
 let score = 0;
 let stateFunction = titleScreen;//Start with the title screen
 
-// Boss (Sci-Fi Bird) Configuration
-const boss = {
-    x: 320,
-    y: -200,
-    width: 300,
-    height: 200,
-    beakWidth: 100,
-    beakHeight: 120,
-    health: 20,
-    attackCooldown: 120, // Cooldown between each attack sequence
-    attackWarning: false,
-    attackWarningCooldown: 0,
-    active: false,
-    attackPhase: 0 // Tracks the attack phase (0 = center, 1 = left, 2 = right)
-};
 
 /**
  * Creates the canvas and sets up the fly
@@ -115,6 +122,11 @@ function titleScreen() {
  * Holds the main game page and calls all the rest of the primary functions
  */
 function game() {
+    // Win condition check
+    if (score >= winScore) {
+        stateFunction = victoryScreen;
+        return;
+    }
     drawStars(); // Draw and move the stars
     if (waveCooldown > 0) {
         // Display wave start message during cooldown
@@ -124,20 +136,15 @@ function game() {
         moveFlies();// Move flies in pattern
         drawFlies(); // Draws flies
         moveShip();
-        moveBeam();
+        moveBeam(ship.beam);
+        if (doubleBeamUnlocked) moveBeam(ship.secondBeam); // Move second beam if unlocked
+        if (tripleBeamUnlocked) moveBeam(ship.thirdBeam); // Move third beam if unlocked
         drawShip();
-        checkBeamOverlap();
+        checkBeamOverlap(ship.beam);
+        if (doubleBeamUnlocked) checkBeamOverlap(ship.secondBeam); // Check second beam overlap
+        if (tripleBeamUnlocked) checkBeamOverlap(ship.thirdBeam); // Check third beam overlap
         drawParticles();
         displayScore();// Write out score
-    }
-    // Trigger boss battle once waves are done
-    if (currentWave > maxWaves && boss.active) {
-        drawBoss();
-        handleBossAttack();
-    }
-    if (boss.active) {
-        drawBoss();
-        handleBossAttack();
     }
 }
 
@@ -254,12 +261,12 @@ function displayTitle() {
 function displayStartButton() {
     push();
     fill("#55fff0");
-    rect(width / 2 - 70, height / 2 + 60, 140, 40, 5);//Start button rectangle
+    rect(width / 2 - 70, height / 2 + 60, 140, 40, 5); //Start button rectangle
     fill("black");
     textFont('Courier New');
     textSize(20);
     textAlign(CENTER, CENTER);
-    text("Start", width / 2, height / 2 + 80);//Start button text
+    text("Start", width / 2, height / 2 + 80); //Start button text
     pop();
 }
 
@@ -370,113 +377,14 @@ function resetWave() {
         fliesPerWave += 3; // Increase flies per wave
         waveCooldown = 60; // Set cooldown duration for the wave start message
         makeWave();
+        if (currentWave === 3) {
+            doubleBeamUnlocked = true; // Unlock the second beam after 3rd wave
+        }
+        if (currentWave === 5) {
+            tripleBeamUnlocked = true; // Unlock the third beam after 5th wave
+        }
     } else {
-        // After the final wave, start the boss battle instead of resetting to the title screen
-        startBossBattle(); // Activate the boss battle
-    }
-}
-
-/**
- * Starts the boss battle with it's starting attributes
- */
-function startBossBattle() {
-    boss.active = true;
-    boss.health = 20;
-    boss.attackCooldown = 120;
-}
-
-/**
- * Draws the bird looking boss
- */
-function drawBoss() {
-    if (boss.health <= 0) {
-        stateFunction = victoryScreen;
-        return;
-    }
-
-    // Draw the main body of the bird
-    push();
-    fill("#444");
-    noStroke();
-    ellipse(boss.x, boss.y, boss.width, boss.height);
-
-    // Draw the wings
-    fill("#666");
-    ellipse(boss.x - boss.width * 0.6, boss.y + 30, boss.width * 0.7, boss.height * 0.5);
-    ellipse(boss.x + boss.width * 0.6, boss.y + 30, boss.width * 0.7, boss.height * 0.5);
-
-    // Draw the eyes
-    fill("red");
-    ellipse(boss.x - 40, boss.y - 30, 20, 30);
-    ellipse(boss.x + 40, boss.y - 30, 20, 30);
-    fill("yellow");
-    ellipse(boss.x - 40, boss.y - 30, 10, 15);
-    ellipse(boss.x + 40, boss.y - 30, 10, 15);
-
-    // Draw the beak based on the attack phase
-    if (boss.attackWarning) {
-        fill("yellow");
-        textSize(30);
-        textAlign(CENTER, CENTER);
-        text("WARNING!", boss.attackTargetX, boss.attackTargetY - 50);
-    } else {
-        fill("#333");
-        triangle(
-            boss.x, boss.y, // Top of the beak
-            boss.attackTargetX - boss.beakWidth / 2, boss.attackTargetY, // Left corner of beak
-            boss.attackTargetX + boss.beakWidth / 2, boss.attackTargetY // Right corner of beak
-        );
-    }
-
-    pop();
-
-    // Display boss health
-    fill("white");
-    textSize(20);
-    textAlign(CENTER, CENTER);
-    text(`BOSS HEALTH: ${boss.health}`, width / 2, 50);
-}
-
-function handleBossAttack() {
-    if (boss.attackCooldown > 0) {
-        boss.attackCooldown--;
-    } else if (!boss.attackWarning) {
-        // Start warning phase for the current attack
-        boss.attackWarning = true;
-        boss.attackWarningCooldown = 60; // Warning duration
-
-        // Set attack target position based on phase
-        if (boss.attackPhase === 0) { // Center attack
-            boss.attackTargetX = width / 2;
-            boss.attackTargetY = height / 2;
-        } else if (boss.attackPhase === 1) { // Left attack
-            boss.attackTargetX = width / 3;
-            boss.attackTargetY = height / 2;
-        } else if (boss.attackPhase === 2) { // Right attack
-            boss.attackTargetX = (2 * width) / 3;
-            boss.attackTargetY = height / 2;
-        }
-    } else if (boss.attackWarning && boss.attackWarningCooldown > 0) {
-        boss.attackWarningCooldown--;
-        if (boss.attackWarningCooldown === 0) {
-            boss.attackWarning = false;
-            boss.isAttacking = true;
-        }
-    } else if (boss.isAttacking) {
-        // Move the beak down towards the target
-        boss.y += 10;
-        if (boss.y > boss.attackTargetY) {
-            // Check for collision with the ship
-            if (dist(boss.attackTargetX, boss.attackTargetY, ship.body.x, ship.body.y) < boss.beakWidth / 2) {
-                stateFunction = gameOverScreen;
-            }
-
-            // Reset position and prepare for next attack
-            boss.isAttacking = false;
-            boss.y = -200; // Reset the bird's position to top
-            boss.attackPhase = (boss.attackPhase + 1) % 3; // Cycle through center, left, right
-            boss.attackCooldown = 120; // Cooldown before next attack sequence
-        }
+        gameOverScreen();
     }
 }
 
@@ -490,28 +398,28 @@ function moveShip() {
 /**
  * Handles moving the beam based on its state
  */
-function moveBeam() {
+function moveBeam(beam) {
     // Beam matches the ship's x
-    ship.beam.x = ship.body.x;
+    beam.x = ship.body.x;
     // If the beam is idle, it doesn't do anything
-    if (ship.beam.state === "idle") {
-        // Do nothing
+    if (beam.state === "idle") {
+        return; // Do nothing
     }
     // If the beam is outbound, it moves up
-    else if (ship.beam.state === "outbound") {
-        ship.beam.y += -ship.beam.speed;
+    else if (beam.state === "outbound") {
+        beam.y += -beam.speed;
         // The beam bounces back if it hits the top
-        if (ship.beam.y <= 0) {
-            ship.beam.state = "inbound";
+        if (beam.y <= 0) {
+            beam.state = "inbound";
         }
     }
     // If the beam is inbound, it moves down
-    else if (ship.beam.state === "inbound") {
+    else if (beam.state === "inbound") {
         // Move the beam down toward the frog spaceship
-        if (ship.beam.y < ship.body.y) {
-            ship.beam.y += ship.beam.speed; // Move down to the frog's position
+        if (beam.y < ship.body.y) {
+            beam.y += beam.speed; // Move down to the frog's position
         } else {
-            ship.beam.state = "idle"; // Reset to idle when it reaches the frog
+            beam.state = "idle"; // Reset to idle when it reaches the frog
         }
     }
 }
@@ -520,19 +428,53 @@ function moveBeam() {
  * Draws a frog spaceship 
  */
 function drawShip() {
-    // Draw the beam tip
+    // Draw the first beam tip
     push();
     fill("#55fff0");
     noStroke();
     ellipse(ship.beam.x, ship.beam.y, ship.beam.size);
     pop();
 
-    // Draw the beam line
+    // Draw the first beam line
     push();
     stroke("#55fff0");
     strokeWeight(ship.beam.size);
     line(ship.beam.x, ship.beam.y, ship.body.x, ship.body.y);
     pop();
+
+    if (doubleBeamUnlocked) {
+        // Second beam, positioned slightly to the left
+        ship.secondBeam.x = ship.body.x - 30;
+        // Draw the first beam tip
+        push();
+        fill("#ff55ff");
+        noStroke();
+        ellipse(ship.secondBeam.x, ship.secondBeam.y, ship.secondBeam.size);
+        pop();
+        // Draw the second beam line
+        push();
+        stroke("#ff55ff");
+        strokeWeight(ship.secondBeam.size);
+        line(ship.secondBeam.x, ship.secondBeam.y, ship.body.x - 30, ship.body.y);
+        pop();
+    }
+
+    if (tripleBeamUnlocked) {
+        // Third beam, positioned slightly to the right
+        ship.thirdBeam.x = ship.body.x + 30;
+        // Draw the third beam tip
+        push();
+        fill("#ffcc00"); // Different color for third beam
+        noStroke();
+        ellipse(ship.thirdBeam.x, ship.thirdBeam.y, ship.thirdBeam.size);
+        pop();
+        // Draw the third beam line
+        push();
+        stroke("#ffcc00");
+        strokeWeight(ship.thirdBeam.size);
+        line(ship.thirdBeam.x, ship.thirdBeam.y, ship.body.x + 30, ship.body.y);
+        pop();
+    }
 
     // Draw the frog-ship's body (a rounded metallic hull)
     push();
@@ -555,32 +497,30 @@ function drawShip() {
     ellipse(ship.body.x + 50, ship.body.y - 40, 15);
     pop();
 }
-// counter = 0;
+
 
 /**
  * Handles the beam overlapping the fly
  */
-function checkBeamOverlap() {
+function checkBeamOverlap(beam) {
     for (let i = flies.length - 1; i >= 0; i--) {
         // Get distance from beam to fly
         const fly = flies[i];
         if (fly.active && !fly.captured) {
-            const d = dist(ship.beam.x, ship.beam.y, fly.x, fly.y);
+            const d = dist(beam.x, beam.y, fly.x, fly.y);
             // Check if it's an overlap
-            if (d < ship.beam.size / 2 + fly.size / 2) {
+            if (d < beam.size / 2 + fly.size / 2) {
                 fly.color = "#ffffff"; // Flash effect
                 fly.captured = true; // Set to captured state
                 createParticles(fly); // Create particles for the caught fly
-                ship.beam.state = "inbound"; // Change beam state to inbound
-                fly.x = ship.beam.x; // Set fly's x position to the beam's x
-                fly.y = ship.beam.y; // Set fly's y position to the beam's y
+                beam.state = "inbound"; // Change beam state to inbound
+                fly.x = beam.x; // Set fly's x position to the beam's x
+                fly.y = beam.y; // Set fly's y position to the beam's y
                 setTimeout(() => (fly.color = fly.originalColor), 100); // Reset color after flash
+                if (caughtFlies >= fliesPerWave) resetWave();
                 break;
             }
         }
-    }
-    if (boss.active && dist(ship.beam.x, ship.beam.y, boss.x, boss.y) < boss.width / 2) {
-        boss.health--;
     }
 }
 
@@ -625,8 +565,18 @@ function mousePressed() {
     // If the mouse is pressed on the location of the button:
     if (mouseX > width / 2 - 70 && mouseX < width / 2 + 70 && mouseY > height / 2 + 60 && mouseY < height / 2 + 100) {
         stateFunction = game; // Change the title page to the game page when button is clicked
-    }
-    if (ship.beam.state === "idle") {
+    } else if (ship.beam.state === "idle") {
+        // Launch the beam only if it's idle
+        ship.beam.y = ship.body.y - 40; // Set the beam's starting position
         ship.beam.state = "outbound";
+
+        if (doubleBeamUnlocked && ship.secondBeam.state === "idle") {
+            ship.secondBeam.y = ship.body.y - 40;
+            ship.secondBeam.state = "outbound";
+        }
+        if (tripleBeamUnlocked && ship.thirdBeam.state === "idle") {
+            ship.thirdBeam.y = ship.body.y - 40; // Set the third beam's starting position
+            ship.thirdBeam.state = "outbound"; // Set the third beam state to outbound
+        }
     }
 }
