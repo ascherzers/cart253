@@ -1,9 +1,16 @@
-# Frogfrogfrog
+# FROLAGA
 
-A game about catching flies.
+Pippin Barr
 
-[Play it!](https://pippinbarr.github.io/cart253-examples/topics/making/frogfrogfrog/index.html)
+MODED BY: Aran Scherzer
+
+A game about catching Alien Hybrid Flies with your many tongues in space as a Frog Space Ship!
+
+[Play it!](https://ascherzers.github.io/cart253/)
 
 - [Ideas](./ideas.md)
 - [Planning](./planning.md)
 - [Pseudocode](./pseudocode.md)
+- [PseudocodeMod](./pseudocodeMod.md)
+
+This project uses P5.js
