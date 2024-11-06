@@ -26,7 +26,6 @@ ship
 
 gameState
     winScore: 1000 // Score to win the game
-    maxWaves: 100 // Total number of waves
     score: 0 // Player’s score
     currentWave: 1 // Tracks the wave level
     flies: array // Array to hold alien flies
@@ -158,6 +157,83 @@ checkBeamOverlap(beam)
                 set beam to inbound
                 set fly position to beam position
                 reset fly color after delay if flashing
+
+// Particle system for blood effect
+emitBloodParticles()
+    Loop 20 times
+        Create particle at ship's body coordinates with:
+            - size: random between 3 and 8
+            - color: red
+            - xSpeed: random between -3 and 3
+            - ySpeed: random between -3 and 3
+            - lifespan: 50
+        Add particle to particles array
+
+// Game over screen if frog is clicked
+gameOverScreen()
+    Set background color to black
+    Set text color to red
+    Set font to 'Courier New', size 50, and centered alignment
+    Display "DON'T CLICK ON THE FROG" text at screen center
+
+    // Display score
+    Set text size to 30
+    Show `Score: ${score}` at the top of the screen
+
+    // Restart button
+    Draw blue-green button rectangle at the bottom center
+    Display "Restart" text on button
+
+// Victory screen when the game is won
+victoryScreen()
+    Set background color to black
+    Set text color to green
+    Set font to 'Courier New', size 60, and centered alignment
+    Display "YOU WIN!" text at screen center
+
+    // Display score
+    Set text size to 30
+    Show `Score: ${score}` at the top of the screen
+
+    // Restart button
+    Draw blue-green button rectangle at the bottom center
+    Display "Restart" text on button
+
+// Display current score at top right
+displayScore()
+    Set text color to white, font to 'Courier New', size 20
+    Show `Score: ${score}` at top right corner
+
+// Launch the beam on mouse click
+mousePressed()
+    // If the click is on restart button in game over/victory screen
+    if stateFunction is gameOverScreen or victoryScreen and click is within restart button area
+        Reset game variables
+        Set stateFunction to titleScreen
+        Initialize the first wave
+        return
+
+    // Check if click is on frog's body
+    Calculate distance d from click to ship body
+    if d is less than half of ship body size
+        Trigger blood particle effect
+        Set a 1-second timer to switch stateFunction to gameOverScreen
+        return
+
+    // Start game on button click from title screen
+    if click is within start button area
+        Set stateFunction to game
+
+    // Launch beam if idle
+    if ship.beam.state is idle
+        Set beam start position to ship body
+        Set beam state to outbound
+
+    // Launch second and third beams if unlocked
+    if doubleBeamUnlocked and secondBeam is idle
+        Set secondBeam position and state to outbound
+    if tripleBeamUnlocked and thirdBeam is idle
+         Set thirdBeam position and state to outbound
 
 gameOverScreen()
     display "GAME OVER" in red at center
