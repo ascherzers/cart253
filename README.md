@@ -1,15 +1,16 @@
-#Pixel Art Board
+# FROLAGA
 
-Aran Scherzer
+Pippin Barr
 
-[View this project online](https://editor.p5js.org/ascherzers/full/dc5HMI0US)
+MODED BY: Aran Scherzer
 
-## Description
+A game about catching Alien Hybrid Flies with your many tongues in space as a Frog Space Ship!
 
-A RGB pixel art board that allows the user to click and drag to draw whatever they want, different parts of the board have different colours too so that it gives it a more interesting design aspect.
+[Play it!](https://ascherzers.github.io/cart253/)
 
-## Credits
+- [Ideas](./ideas.md)
+- [Planning](./planning.md)
+- [Pseudocode](./pseudocode.md)
+- [PseudocodeMod](./pseudocodeMod.md)
 
-This bit should describe what tools were used. For example:
-
-This project uses [p5.js](https://p5js.org).
+This project uses P5.js
