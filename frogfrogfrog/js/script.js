@@ -21,6 +21,7 @@
  * Particle effects
  * Added a win condition with win page and lose page
  * Added multiple tongues
+ * Made the frog die if clicked with blood effect
  */
 
 "use strict";
@@ -246,10 +247,10 @@ function displayTitle() {
     push();
     fill("white");
     textFont('Courier New');
-    textSize(40);
+    textSize(120);
     textAlign(CENTER);
     text("FROGALA", width / 2, height / 2 - 20);
-    textSize(20);
+    textSize(15);
     text("A game of catching Alien Flies \n with your Tractor Tounge", width / 2, height / 2 + 20);
     pop();
 }
@@ -520,14 +521,43 @@ function checkBeamOverlap(beam) {
 }
 
 /**
- * Shows the game over screen if game loss
+ * Emits blood particles around the frog spaceship before ending the game.
+ */
+function emitBloodParticles() {
+    for (let i = 0; i < 20; i++) {
+        particles.push({
+            x: ship.body.x,
+            y: ship.body.y,
+            size: random(3, 8),
+            color: "#ff0000",  // Red color for blood effect
+            xSpeed: random(-3, 3),
+            ySpeed: random(-3, 3),
+            lifespan: 50
+        });
+    }
+}
+
+/**
+ * Shows the game over screen if frog is clicked
  */
 function gameOverScreen() {
     background("black");
     fill("red");
+    textFont('Courier New');
     textSize(50);
     textAlign(CENTER, CENTER);
-    text("GAME OVER", width / 2, height / 2);
+    text("DON'T CLICK \nON THE FROG", width / 2, height / 2);
+
+    // Display score at the top
+    textSize(30);
+    text(`Score: ${score}`, width / 2, 60);
+
+    // Restart button at the bottom
+    fill("#55fff0");
+    rect(width / 2 - 70, height - 80, 140, 40, 5);
+    fill("black");
+    textSize(20);
+    text("Restart", width / 2, height - 60);
 }
 
 /**
@@ -536,9 +566,21 @@ function gameOverScreen() {
 function victoryScreen() {
     background("black");
     fill("green");
-    textSize(50);
+    textFont('Courier New');
+    textSize(60);
     textAlign(CENTER, CENTER);
     text("YOU WIN!", width / 2, height / 2);
+
+    // Display score at the top
+    textSize(30);
+    text(`Score: ${score}`, width / 2, 60);
+
+    // Restart button at the bottom
+    fill("#55fff0");
+    rect(width / 2 - 70, height - 80, 140, 40, 5);
+    fill("black");
+    textSize(20);
+    text("Restart", width / 2, height - 60);
 }
 
 /**
@@ -557,11 +599,32 @@ function displayScore() {
  * Launch the beam on click (if it's not launched yet)
  */
 function mousePressed() {
+    // Check if the click is within the restart button area at the new position
+    if ((stateFunction === gameOverScreen || stateFunction === victoryScreen) &&
+        mouseX > width / 2 - 70 && mouseX < width / 2 + 70 &&
+        mouseY > height - 80 && mouseY < height - 40) {  // Updated to match button's new position
+        // Reset game variables
+        score = 0;
+        currentWave = 1;
+        caughtFlies = 0;
+        fliesPerWave = 5;
+        waveCooldown = 0;
+        doubleBeamUnlocked = false;
+        tripleBeamUnlocked = false;
+        stateFunction = titleScreen;  // Return to title screen
+        makeWave();  // Set up the first wave
+        return;
+    }
+
     // Check if the click is within the frog ship's area
     let d = dist(mouseX, mouseY, ship.body.x, ship.body.y);
     if (d < ship.body.size / 2) {
+        // Pretending the frog got squashed by the player's click
+        emitBloodParticles();
         // If the click is within the frog's body, end the game
-        stateFunction = gameOverScreen;
+        setTimeout(() => {
+            stateFunction = gameOverScreen;
+        }, 1000); // 1-second delay
         return;
     }
     // If the mouse is pressed on the location of the button:
@@ -570,11 +633,11 @@ function mousePressed() {
     } else if (ship.beam.state === "idle") {
         // Launch the beam only if it's idle
         ship.beam.y = ship.body.y - 40; // Set the beam's starting position
-        ship.beam.state = "outbound";
+        ship.beam.state = "outbound";// Set the beam's state to outbound
 
         if (doubleBeamUnlocked && ship.secondBeam.state === "idle") {
-            ship.secondBeam.y = ship.body.y - 40;
-            ship.secondBeam.state = "outbound";
+            ship.secondBeam.y = ship.body.y - 40;// Set the second beam's starting position
+            ship.secondBeam.state = "outbound"; // Set the second beam state to outbound
         }
         if (tripleBeamUnlocked && ship.thirdBeam.state === "idle") {
             ship.thirdBeam.y = ship.body.y - 40; // Set the third beam's starting position
