@@ -34,7 +34,7 @@ const ship = {
         y: 520,
         size: 150
     },
-    // The ship's beam has a position, size, speed, and state
+    // The ship's beam's position, size, speed, and state
     beam: {
         x: undefined,
         y: 480,
@@ -60,8 +60,7 @@ const ship = {
 };
 
 
-const winScore = 1000; // Winning score condition
-const maxWaves = 100; // Constant for wave configurations
+const winScore = 500; // Winning score condition
 
 let doubleBeamUnlocked = false; // Power-up for double beam
 let tripleBeamUnlocked = false; // Third beam power-up
@@ -80,7 +79,7 @@ const starCount = 100; // Number of stars
 
 // Score counter
 let score = 0;
-let stateFunction = titleScreen;//Start with the title screen
+let stateFunction = titleScreen; //Start with the title screen
 
 
 /**
@@ -103,7 +102,7 @@ function setup() {
 }
 
 /**
- * Draws the stateFunctioj
+ * Draws the stateFunction
  */
 function draw() {
     stateFunction();
@@ -288,7 +287,7 @@ function moveFlies() {
             fly.y = lerp(fly.y, ship.body.y, 0.05);
             if (dist(fly.x, fly.y, ship.body.x, ship.body.y) < 10) {
                 flies.splice(flies.indexOf(fly), 1); // Remove when close to ship
-                score++;
+                score += 5;
                 caughtFlies++;
                 if (caughtFlies >= fliesPerWave) resetWave();
             }
@@ -372,19 +371,15 @@ function displayWaveStartMessage() {
  */
 function resetWave() {
     caughtFlies = 0;
-    if (currentWave < maxWaves) {
-        currentWave++;
-        fliesPerWave += 3; // Increase flies per wave
-        waveCooldown = 60; // Set cooldown duration for the wave start message
-        makeWave();
-        if (currentWave === 3) {
-            doubleBeamUnlocked = true; // Unlock the second beam after 3rd wave
-        }
-        if (currentWave === 5) {
-            tripleBeamUnlocked = true; // Unlock the third beam after 5th wave
-        }
-    } else {
-        gameOverScreen();
+    currentWave++;
+    fliesPerWave += 3; // Increase flies per wave
+    waveCooldown = 60; // Set cooldown duration for the wave start message
+    makeWave();
+    if (currentWave === 3) {
+        doubleBeamUnlocked = true; // Unlock the second beam after 3rd wave
+    }
+    if (currentWave === 5) {
+        tripleBeamUnlocked = true; // Unlock the third beam after 5th wave
     }
 }
 
@@ -554,7 +549,7 @@ function displayScore() {
     fill("white");
     textFont('Courier New')
     textSize(20);
-    text(`Score: ${score}`, 530, 30); // Display score in the top right corner
+    text(`Score: ${score}`, 510, 30); // Display score in the top right corner
     pop();
 }
 
@@ -562,6 +557,13 @@ function displayScore() {
  * Launch the beam on click (if it's not launched yet)
  */
 function mousePressed() {
+    // Check if the click is within the frog ship's area
+    let d = dist(mouseX, mouseY, ship.body.x, ship.body.y);
+    if (d < ship.body.size / 2) {
+        // If the click is within the frog's body, end the game
+        stateFunction = gameOverScreen;
+        return;
+    }
     // If the mouse is pressed on the location of the button:
     if (mouseX > width / 2 - 70 && mouseX < width / 2 + 70 && mouseY > height / 2 + 60 && mouseY < height / 2 + 100) {
         stateFunction = game; // Change the title page to the game page when button is clicked
