@@ -1,6 +1,6 @@
 # Template p5 Project
 
-Author Name
+Variation Number 1
 
 [View this project online](URL_FOR_THE_RUNNING_PROJECT)
 
