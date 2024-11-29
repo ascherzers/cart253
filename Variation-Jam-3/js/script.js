@@ -1,26 +1,33 @@
 // Global variables
 let player;
 let settings = { gravity: null };
-let obstacles = [];
+let platforms = [];
 let coins = [];
 let trails = [];
 let score = 0;
 let cameraOffset = 0; // Tracks the camera's vertical position
+let bg, doodlerLeft, doodlerRight, platformImg; // Assets
 
 
+function preload() {
+    bg = loadImage('assets/images/bg.png'); // Background image
+    doodlerLeft = loadImage('assets/images/Ic_left.png'); // Doodler facing left
+    doodlerRight = loadImage('assets/images/Ic_right.png'); // Doodler facing right
+    platformImg = loadImage('assets/images/platform.jpg'); // Platform image
+}
 // setup executes once at the beginning
 function setup() {
     createCanvas(600, 400); // Create a canvas of 600 pixels per 400 pixels
     settings.gravity = createVector(0, 1);
-    player = new Player(settings, width / 2, height - 50, 40, 40);
+    player = new Player(settings, width / 2, height - 50, 40, 40, doodlerLeft, doodlerRight);
 
-    // Generate initial obstacles and coins
+    // Generate initial platforms and coins
     generateMapSection(0, height);
 }
 
 // draw executes again and again (~60 fps)
 function draw() {
-    background(220); // Apply a rgb color (220, 220, 220) to the the background
+    image(bg, 0, 0, width, height); // Draw background image
 
     // Move the camera to follow the player only upward
     if (player.pos.y < height / 2 + cameraOffset) {
@@ -35,12 +42,11 @@ function draw() {
 
     // Update and display player
     player.show();
-    player.update();
+    player.update(platforms);
 
-    // Update and display obstacles
-    for (let obstacle of obstacles) {
-        obstacle.show();
-        player.standOn(obstacle);
+    // Update and display platforms
+    for (let platform of platforms) {
+        platform.draw();
     }
 
     // Update and display coins
@@ -52,52 +58,61 @@ function draw() {
         }
     }
 
-    // Manage trails
-    for (let i = trails.length - 1; i >= 0; i--) {
-        trails[i].show();
-        trails[i].update();
-        if (player.standOn(trails[i])) {
-            trails[i].resetLifetime(); // Refresh trail's lifetime when standing on it
-        }
-        if (trails[i].isFaded()) {
-            trails.splice(i, 1); // Remove faded trails
-        }
+    // Generate new platforms and coins as the player climbs
+    if (player.pos.y + cameraOffset < -height) {
+        generatePlatforms(cameraOffset - height, cameraOffset);
     }
 
-    // Generate new map sections as the player climbs
-    if (player.pos.y + cameraOffset < -height) {
-        generateMapSection(cameraOffset - height, cameraOffset);
-    }
+    // Remove old platforms and coins below the screen
+    platforms = platforms.filter(platform => platform.y > cameraOffset - height);
+    coins = coins.filter(coin => coin.y > cameraOffset - height);
 }
 
-// Generate a new section of the map
-function generateMapSection(startY, endY) {
-    // Clear old objects to avoid clutter
-    obstacles = obstacles.filter((obs) => obs.y > startY);
-    coins = coins.filter((coin) => coin.y > startY);
+// Generate platforms and coins
+function generatePlatforms(startY, endY) {
+    const sectionHeight = endY - startY;
 
     // Determine the number of platforms dynamically based on height
-    const basePlatforms = 5; // Base number of platforms
-    const heightFactor = max(1, 1 - abs(cameraOffset) / 5000); // Reduce density with height
+    const basePlatforms = 6; // Base number of platforms
+    const heightFactor = max(0.6, 1 - abs(cameraOffset) / 5000); // Reduce density with height
     const numberOfPlatforms = floor(basePlatforms * heightFactor);
-
-    const platformSpacing = (endY - startY) / numberOfPlatforms;
+    const gap = sectionHeight / numberOfPlatforms;
 
     for (let i = 0; i < numberOfPlatforms; i++) {
-        const platformY = startY + i * platformSpacing + random(-20, 20); // Slight randomness
-        const platformX = random(50, width - 130); // Avoid edges
+        let tries = 0;
+        let platformAdded = false;
 
-        // Add a new platform
-        obstacles.push(new Obstacle(platformX, platformY, 80, 20));
+        while (tries < 10 && !platformAdded) {
+            tries++;
 
-        // Add a coin optionally
-        if (random(1) < 0.4 * heightFactor) { // Decrease coin density with height
-            const coinX = platformX + random(-10, 40);
-            const coinY = platformY - 30;
-            coins.push(new Coin(coinX, coinY, 15));
+            // Generate random positions for the platform
+            const platformX = random(50, width - 130);
+            const platformY = startY + i * gap + random(-20, 20);
+
+            // Ensure the platform does not overlap with existing platforms
+            let isValid = true;
+            for (let existing of platforms) {
+                if (dist(platformX, platformY, existing.x, existing.y) < 100) {
+                    isValid = false;
+                    break;
+                }
+            }
+
+            if (isValid) {
+                platforms.push(new Platform(platformX, platformY, platformImg));
+                platformAdded = true;
+
+                // Optionally add a coin near the platform
+                if (random(1) < 0.4 * heightFactor) {
+                    const coinX = platformX + random(-10, 40);
+                    const coinY = platformY - 30;
+                    coins.push(new Coin(coinX, coinY, 15));
+                }
+            }
         }
     }
 }
+
 
 // keyPressed executes when a key is pressed
 function keyPressed() {
@@ -126,25 +141,34 @@ function keyReleased() {
 
 // Player class
 class Player {
-    constructor(settings, x, y, w, h) {
+    constructor(settings, x, y, w, h, leftImg, rightImg) {
         this.settings = settings;
         this.pos = createVector(x, y);
         this.vel = createVector(0, 0);
         this.acc = createVector(0, 0);
         this.size = createVector(w, h);
         this.onGround = false;
+        this.facingRight = true;
+        this.leftImg = leftImg;
+        this.rightImg = rightImg;
     }
 
     show() {
-        fill(100, 150, 255);
-        rect(this.pos.x, this.pos.y, this.size.x, this.size.y);
+        imageMode(CENTER);
+        const img = this.facingRight ? this.rightImg : this.leftImg;
+        image(img, this.pos.x + this.size.x / 2, this.pos.y + this.size.y / 2, this.size.x, this.size.y);
     }
 
-    update() {
+    update(platforms) {
         this.acc.add(this.settings.gravity);
         this.vel.add(this.acc);
         this.pos.add(this.vel);
         this.acc.set(0, 0);
+
+        // Check for platform collisions
+        for (let platform of platforms) {
+            if (this.standOn(platform)) break;
+        }
 
         // Leave a memory trail
         if (this.vel.mag() > 0) {
@@ -187,8 +211,14 @@ class Player {
 
     move(direction, isPressed) {
         const speed = 5;
-        if (direction === 'left') this.vel.x = isPressed ? -speed : 0;
-        if (direction === 'right') this.vel.x = isPressed ? speed : 0;
+        if (direction === 'left') {
+            this.vel.x = isPressed ? -speed : 0;
+            this.facingRight = false;
+        }
+        if (direction === 'right') {
+            this.vel.x = isPressed ? speed : 0;
+            this.facingRight = true;
+        }
         if (direction === 'up' && this.onGround) {
             this.vel.y = -15; // Jump force
             this.onGround = false;
@@ -196,7 +226,7 @@ class Player {
     }
 
     standOn(platform) {
-        // Check collision with any platform (obstacle or trail)
+        // Check collision with any platform (platforms or trail)
         if (
             this.pos.y + this.size.y >= platform.y &&
             this.pos.y + this.size.y <= platform.y + 5 &&
@@ -217,18 +247,18 @@ class Player {
     }
 }
 
-// Obstacle class
-class Obstacle {
-    constructor(x, y, w, h) {
+// Platform class
+class Platform {
+    constructor(x, y, img) {
         this.x = x;
         this.y = y;
-        this.w = w;
-        this.h = h;
+        this.w = 80;
+        this.h = 20;
+        this.img = img;
     }
 
-    show() {
-        fill(200, 100, 100);
-        rect(this.x, this.y, this.w, this.h);
+    draw() {
+        image(this.img, this.x, this.y, this.w, this.h);
     }
 }
 
