@@ -6,20 +6,20 @@ let coins = [];
 let trails = [];
 let score = 0;
 let cameraOffset = 0; // Tracks the camera's vertical position
-let bg, doodlerLeft, doodlerRight, platformImg; // Assets
+let bg, icLeft, icRight, platformImg; // Assets
 
 
 function preload() {
     bg = loadImage('assets/images/bg.png'); // Background image
-    doodlerLeft = loadImage('assets/images/Ic_left.png'); // Doodler facing left
-    doodlerRight = loadImage('assets/images/Ic_right.png'); // Doodler facing right
-    platformImg = loadImage('assets/images/platform.jpg'); // Platform image
+    icLeft = loadImage('assets/images/Ic_left.png'); // Icarus facing left
+    icRight = loadImage('assets/images/Ic_right.png'); // Icarus facing right
+    platformImg = loadImage('assets/images/platform.jpg'); // Platform image 
 }
 // setup executes once at the beginning
 function setup() {
     createCanvas(600, 400); // Create a canvas of 600 pixels per 400 pixels
     settings.gravity = createVector(0, 1);
-    player = new Player(settings, width / 2, height - 50, 40, 40, doodlerLeft, doodlerRight);
+    player = new Player(settings, width / 2, height - 50, 40, 40, icLeft, icRight);
 
     // Generate initial platforms and coins
     generateMapSection(0, height);
