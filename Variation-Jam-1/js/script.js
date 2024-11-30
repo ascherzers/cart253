@@ -5,7 +5,20 @@ let platforms = [];
 let score = 0;
 let gameOver = false; // Track if the game is over
 let platformBuffer = 100; // Buffer above the visible area to spawn platforms
+let memoryFragments = [];
+let collectedFragments = 0;
+let showStorySnippet = false;
+let currentSnippetIndex = -1;
+let storySnippets = [
+    "A long-forgotten artifact calls out \n to you from the collapsing world.",
+    "The artifact was created to seal a \n terrible power that once destroyed civilizations.",
+    "As you climb higher, memories of a \n lost realm flood your mind. You were its last guardian.",
+    "The artifact is the key to salvation \n but it comes at a cost."
+];
 
+/** 
+ * Setup the board and initalize the game
+*/
 function setup() {
     createCanvas(500, 600);
     initializeGame(); // Initialize the game state
@@ -15,8 +28,12 @@ function setup() {
 function initializeGame() {
     settings.gravity = createVector(0, 0.5);
     platforms = [];
+    memoryFragments = [];
     score = 0;
     gameOver = false;
+    collectedFragments = 0;
+    showStorySnippet = false;
+    currentSnippetIndex = -1;
 
     // Generate initial platforms
     for (let i = 0; i < 10; i++) {
@@ -29,10 +46,18 @@ function initializeGame() {
     let firstPlatform = platforms[platforms.length - 1];
     player = new Player(settings, firstPlatform.x + firstPlatform.w / 2 - 20, firstPlatform.y - 40, 40, 40);
 
+    // Place memory fragments on specific platforms
+    memoryFragments.push(100, 200, 300, 400); // Positions for fragments
+
     loop(); // Restart the draw loop
 }
 
 function draw() {
+    if (showStorySnippet) {
+        displayStorySnippet();
+        return;
+    }
+
     background(220);
 
     // Handle game over logic
@@ -69,12 +94,34 @@ function draw() {
         platforms.push(new Platform(newX, newY, 80, 15));
     }
 
+    for (let i = memoryFragments.length - 1; i >= 0; i--) {
+        let fragmentY = height - memoryFragments[i] * 60;
+        if (fragmentY > player.pos.y - height && fragmentY < player.pos.y + height) {
+            fill(255, 200, 0);
+            rect(width / 2 - 10, fragmentY, 20, 20);
+
+            // Check if the player collects the fragment
+            if (dist(player.pos.x + player.size.x / 2, player.pos.y + player.size.y / 2, width / 2, fragmentY + 10) < 30) {
+                memoryFragments.splice(i, 1);
+                collectedFragments++;
+                currentSnippetIndex++;
+                showStorySnippet = true;
+                break;
+            }
+        }
+    }
+
     // Increment score as the player ascends
     for (let platform of platforms) {
         if (platform.y > player.pos.y + height / 2 && !platform.scored) {
             platform.scored = true; // Mark platform as scored
             score++;
         }
+    }
+
+    if (collectedFragments === 4 && player.pos.y <= -500 * 60) {
+        displayVictoryScreen();
+        noLoop();
     }
 
     // Game over condition
@@ -92,25 +139,48 @@ function drawScore() {
     fill('red');
     textSize(18);
     text(`Score: ${score}`, 10, 30); // Always draw at the top-left corner
+    text(`Fragments: ${collectedFragments}/4`, 10, 50);
     pop(); // Restore the previous drawing state
 }
 
+// Display the story snippet
+function displayStorySnippet() {
+    background(0, 50);
+    fill(255);
+    //  textAlign(CENTER, CENTER);
+    textSize(18);
+    text(storySnippets[currentSnippetIndex], width / 4, height / 2 - 20);
+    textSize(16);
+    text("\nPress 'C' to continue...", 310 / 2, height / 2 + 20);
+}
 
+// Display victory screen
+function displayVictoryScreen() {
+    textSize(32);
+    fill('green');
+    text("You escaped the collapsing world!", 270 / 2, height / 2 - 50);
+    textSize(20);
+    text("Congratulations!", 340 / 2, height / 2);
+    text("Play Again? Press space!", 300 / 2, height / 2 + 50);
+}
 
 // Display the game-over screen
 function displayGameOverScreen() {
-    textAlign(CENTER);
     textSize(32);
     fill('red');
-    text("Game Over!", width / 2, height / 2 - 50);
+    text("Game Over!", 340 / 2, height / 2 - 50);
     textSize(20);
-    text("Press SPACE to restart", width / 2, height / 2);
+    text("Press SPACE to restart", 300 / 2, height / 2);
 }
 
 // keyPressed handles input
 function keyPressed() {
     if (gameOver && key === ' ') {
         initializeGame(); // Restart the game when space is pressed
+    }
+
+    if (showStorySnippet && key === 'c') {
+        showStorySnippet = false;
     }
 
     if (!gameOver) {
