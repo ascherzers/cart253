@@ -9,12 +9,30 @@ let memoryFragments = [];
 let collectedFragments = 0;
 let showStorySnippet = false;
 let currentSnippetIndex = -1;
+let playerImgRight; // Global variable for the right player image
+let playerImgLeft; // Global variable for the left player image
+let platformTexture; // Image for the platform texture
+let bgImage; // Background image
+let fragImage; // Global variable for the fragment image
+let endBarrierY = -700 * 60; // Position of the end barrier
+let endBarrierHeight = 500; // Height of the barrier
+let deathPosition = null; // Track where the player dies
+
+
 let storySnippets = [
     "A long-forgotten artifact calls out \n to you from the collapsing world.",
     "The artifact was created to seal a \n terrible power that once destroyed civilizations.",
     "As you climb higher, memories of a \n lost realm flood your mind. You were its last guardian.",
     "The artifact is the key to salvation \n but it comes at a cost."
 ];
+
+function preload() {
+    playerImgRight = loadImage('assets/images/IcRight.png'); // Path to the right facing image
+    playerImgLeft = loadImage('assets/images/IcLeft.png');  // Path to left facing image
+    platformTexture = loadImage('assets/images/platform1.jpg'); // Platform texture
+    bgImage = loadImage('assets/images/bg.png'); // Background image
+    fragImage = loadImage('assets/images/frag.png'); // Load the fragment image
+}
 
 /** 
  * Setup the board and initalize the game
@@ -34,6 +52,7 @@ function initializeGame() {
     collectedFragments = 0;
     showStorySnippet = false;
     currentSnippetIndex = -1;
+    deathPosition = null;
 
     // Generate initial platforms
     for (let i = 0; i < 10; i++) {
@@ -58,16 +77,14 @@ function draw() {
         return;
     }
 
-    background(220);
+    background(220);//Fallback background
 
-    // Handle game over logic
-    if (gameOver) {
-        displayGameOverScreen();
-        return;
-    }
+    // Draw the background image
+    image(bgImage, 0, 0, width, height); // Scale the background to the size of the canvas
 
     // Draw the score at the fixed screen position
     drawScore();
+    displayCollectedFragments();
 
     // Translate canvas based on player position (simulate scrolling)
     let offsetY = max(0, height / 2 - player.pos.y);
@@ -91,14 +108,16 @@ function draw() {
     while (platforms[platforms.length - 1].y > player.pos.y - platformBuffer - height) {
         let newX = random(50, width - 100);
         let newY = platforms[platforms.length - 1].y - 60;
-        platforms.push(new Platform(newX, newY, 80, 15));
+        platforms.push(new Platform(newX, newY, 80, 15)); // Every new platform uses the texture
     }
 
+    // Handle memory fragments and scoring
     for (let i = memoryFragments.length - 1; i >= 0; i--) {
         let fragmentY = height - memoryFragments[i] * 60;
+        // Only draw fragments within the player's view
         if (fragmentY > player.pos.y - height && fragmentY < player.pos.y + height) {
-            fill(255, 200, 0);
-            rect(width / 2 - 10, fragmentY, 20, 20);
+            // // Draw the fragment image
+            image(fragImage, width / 2 - 10, fragmentY, 40, 40);
 
             // Check if the player collects the fragment
             if (dist(player.pos.x + player.size.x / 2, player.pos.y + player.size.y / 2, width / 2, fragmentY + 10) < 30) {
@@ -119,27 +138,45 @@ function draw() {
         }
     }
 
-    if (collectedFragments === 4 && player.pos.y <= -500 * 60) {
+    // Game over condition
+    if (player.pos.y > height + 100 ||
+        (player.pos.y <= endBarrierY + endBarrierHeight && player.pos.x > width / 2 - 40 && player.pos.x < width / 2 + 40)) {
+        gameOver = true;
+        displayGameOverScreen();
+        deathPosition = createVector(player.pos.x, player.pos.y); // Store death position
+        noLoop(); // Stop the draw loop
+    }
+
+    // Draw the end barrier (giant orange rectangle)
+    fill(255, 165, 0); // Orange color
+    noStroke();
+    rect(0, endBarrierY, width, endBarrierHeight);
+
+    if (collectedFragments === 4) {
         displayVictoryScreen();
         noLoop();
     }
 
-    // Game over condition
-    if (player.pos.y > height + 100) {
-        gameOver = true;
+    // Handle game over logic
+    if (gameOver) {
         displayGameOverScreen();
-        noLoop(); // Stop the draw loop
+        return;
     }
+
 }
 
 // Draw the score at a fixed position on the screen
 function drawScore() {
     push(); // Save the current drawing state
     resetMatrix(); // Reset transformations to the default coordinate system
-    fill('red');
-    textSize(18);
-    text(`Score: ${score}`, 10, 30); // Always draw at the top-left corner
-    text(`Fragments: ${collectedFragments}/4`, 10, 50);
+    fill('white');
+    textSize(25);
+    textAlign(LEFT);
+    // Add a white outline to the text
+    stroke(0); // Set the stroke color to white
+    strokeWeight(2); // Set the stroke thickness
+    text(`${score}`, 10, 30); // Always draw at the top-left corner
+    // text(`Fragments: ${collectedFragments}/4`, 10, 50);
     pop(); // Restore the previous drawing state
 }
 
@@ -147,31 +184,43 @@ function drawScore() {
 function displayStorySnippet() {
     background(0, 50);
     fill(255);
-    //  textAlign(CENTER, CENTER);
+    textAlign(CENTER, CENTER);
     textSize(18);
-    text(storySnippets[currentSnippetIndex], width / 4, height / 2 - 20);
+    text(storySnippets[currentSnippetIndex], width / 2, height / 2 - 20);
     textSize(16);
-    text("\nPress 'C' to continue...", 310 / 2, height / 2 + 20);
+    text("\nPress 'C' to continue...", width / 2, height / 2 + 20);
 }
 
 // Display victory screen
 function displayVictoryScreen() {
     textSize(32);
-    fill('green');
-    text("You escaped the collapsing world!", 270 / 2, height / 2 - 50);
+    textAlign(CENTER, CENTER);
+    fill('white');
+    text("You escaped your fate", width / 2, height / 2 - 50);
     textSize(20);
-    text("Congratulations!", 340 / 2, height / 2);
-    text("Play Again? Press space!", 300 / 2, height / 2 + 50);
+    text("Congratulations", width / 2, height / 2);
+    text("Press SPACE to play again", width / 2, height / 2 + 50);
 }
 
-// Display the game-over screen
 function displayGameOverScreen() {
+    // Reset the transformation to the default (fixed screen position)
+    push(); // Save current transformation state
+    resetMatrix(); // Reset transformations to the default coordinate system
+
+    // Display the message in the center of the visible screen
     textSize(32);
-    fill('red');
-    text("Game Over!", 340 / 2, height / 2 - 50);
+    textAlign(CENTER);
+    fill('white');
+    stroke(0); // Black outline for better contrast
+    strokeWeight(2);
+    text("Icarus Flew Too Close \n To The Sun", width / 2, height / 2 - 50);
     textSize(20);
-    text("Press SPACE to restart", 300 / 2, height / 2);
+    text("\nPress SPACE to restart", width / 2, height / 2 + 50);
+
+    pop(); // Restore the previous transformation state
 }
+
+
 
 // keyPressed handles input
 function keyPressed() {
@@ -184,15 +233,26 @@ function keyPressed() {
     }
 
     if (!gameOver) {
-        if (key === 'ArrowLeft') player.move('left', true);
-        if (key === 'ArrowRight') player.move('right', true);
+        if (key === 'ArrowLeft') player.move('left', true); // Move left and update image
+        if (key === 'ArrowRight') player.move('right', true); // Move right and update image
     }
 }
 
 function keyReleased() {
     if (!gameOver) {
-        if (key === 'ArrowLeft') player.move('left', false);
-        if (key === 'ArrowRight') player.move('right', false);
+        if (key === 'ArrowLeft') player.move('left', false);// Stop moving left
+        if (key === 'ArrowRight') player.move('right', false);// Stop moving right
+    }
+}
+
+// New function to display collected fragments side by side
+function displayCollectedFragments() {
+    let fragmentSpacing = 45; // Space between fragment images
+    let startX = 10; // Start from left side of the screen
+    let yPos = 70; // Place below the score
+
+    for (let i = 0; i < collectedFragments; i++) {
+        image(fragImage, startX + i * fragmentSpacing, yPos, 40, 40); // Draw each fragment
     }
 }
 
@@ -204,11 +264,15 @@ class Player {
         this.vel = createVector(0, 0);
         this.acc = createVector(0, 0);
         this.size = createVector(w, h);
+        this.currentImg = playerImgRight; // Default to right-facing image
     }
 
     show() {
-        fill(100, 150, 255);
-        rect(this.pos.x, this.pos.y, this.size.x, this.size.y);
+        let scaleFactor = 3; // Sets the scale of the image
+        let newWidth = this.size.x * scaleFactor;
+        let newHeight = this.size.y * scaleFactor;
+
+        image(this.currentImg, this.pos.x - (newWidth - this.size.x) / 2, this.pos.y - (newHeight - this.size.y) / 2, newWidth, newHeight);
     }
 
     update(platforms) {
@@ -239,8 +303,14 @@ class Player {
 
     move(direction, isPressed) {
         const speed = 5;
-        if (direction === 'left') this.vel.x = isPressed ? -speed : 0;
-        if (direction === 'right') this.vel.x = isPressed ? speed : 0;
+        if (direction === 'left') {
+            this.vel.x = isPressed ? -speed : 0;
+            this.currentImg = isPressed ? playerImgLeft : this.currentImg; // Switch to left facing image
+        }
+        if (direction === 'right') {
+            this.vel.x = isPressed ? speed : 0;
+            this.currentImg = isPressed ? playerImgRight : this.currentImg; // Switch to right facing image
+        }
     }
 }
 
@@ -255,7 +325,6 @@ class Platform {
     }
 
     show() {
-        fill(200, 100, 100);
-        rect(this.x, this.y, this.w, this.h);
+        image(platformTexture, this.x, this.y, this.w, this.h); // Draw textured platform
     }
 }
