@@ -332,6 +332,9 @@ class Platform {
     }
 
     show() {
-        image(platformTexture, this.x, this.y, this.w, this.h); // Draw textured platform
+        fill("#FDB813"); // Highlight final platform
+        stroke(255); // Add outline
+        strokeWeight(3);
+        rect(this.x, this.y, this.w, this.h);
     }
 }
