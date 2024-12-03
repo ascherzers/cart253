@@ -17,13 +17,14 @@ let fragImage; // Global variable for the fragment image
 let endBarrierY = -700 * 60; // Position of the end barrier
 let endBarrierHeight = 500; // Height of the barrier
 let deathPosition = null; // Track where the player dies
+let wingImg; // Image behind the storySnippets
 
 
 let storySnippets = [
-    "A long-forgotten artifact calls out \n to you from the collapsing world.",
-    "The artifact was created to seal a \n terrible power that once destroyed civilizations.",
-    "As you climb higher, memories of a \n lost realm flood your mind. You were its last guardian.",
-    "The artifact is the key to salvation \n but it comes at a cost."
+    "Icarus was a daring soul, \n ascending on wings of waxed ambition.",
+    "His father warned him, \n 'Fly not too low, nor too high.'",
+    "The thrill of soaring higher \n filled Icarus with reckless courage.",
+    "Beware, Icarus.\n Beyond the final platform lies the sun, \n and its embrace will burn you."
 ];
 
 function preload() {
@@ -32,6 +33,7 @@ function preload() {
     platformTexture = loadImage('assets/images/platform1.jpg'); // Platform texture
     bgImage = loadImage('assets/images/bg.png'); // Background image
     fragImage = loadImage('assets/images/frag.png'); // Load the fragment image
+    wingImg = loadImage('assets/images/wings.png'); // Load image behind the storySnippets
 }
 
 /** 
@@ -114,6 +116,7 @@ function draw() {
     // Handle memory fragments and scoring
     for (let i = memoryFragments.length - 1; i >= 0; i--) {
         let fragmentY = height - memoryFragments[i] * 60;
+        //let fragmentY = -100; // Use for tests
         // Only draw fragments within the player's view
         if (fragmentY > player.pos.y - height && fragmentY < player.pos.y + height) {
             // // Draw the fragment image
@@ -173,7 +176,7 @@ function drawScore() {
     textSize(25);
     textAlign(LEFT);
     // Add a white outline to the text
-    stroke(0); // Set the stroke color to white
+    stroke(0); // Set the stroke colour to black
     strokeWeight(2); // Set the stroke thickness
     text(`${score}`, 10, 30); // Always draw at the top-left corner
     // text(`Fragments: ${collectedFragments}/4`, 10, 50);
@@ -183,11 +186,14 @@ function drawScore() {
 // Display the story snippet
 function displayStorySnippet() {
     background(0, 50);
-    fill(255);
+    image(wingImg, 0, 0, width, height); // Scale the image to cover the entire canvas
+    fill("#A4161A");
+    stroke(255); // Set the stroke colour to black
+    strokeWeight(2); // Set the stroke thickness
     textAlign(CENTER, CENTER);
-    textSize(18);
+    textSize(22);
     text(storySnippets[currentSnippetIndex], width / 2, height / 2 - 20);
-    textSize(16);
+    textSize(18);
     text("\nPress 'C' to continue...", width / 2, height / 2 + 20);
 }
 
@@ -196,6 +202,8 @@ function displayVictoryScreen() {
     textSize(32);
     textAlign(CENTER, CENTER);
     fill('white');
+    stroke(0); // Set the stroke color to black
+    strokeWeight(2); // Set the stroke thickness
     text("You escaped your fate", width / 2, height / 2 - 50);
     textSize(20);
     text("Congratulations", width / 2, height / 2);
@@ -219,7 +227,6 @@ function displayGameOverScreen() {
 
     pop(); // Restore the previous transformation state
 }
-
 
 
 // keyPressed handles input
