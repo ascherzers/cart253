@@ -2,161 +2,288 @@
 let player;
 let settings = { gravity: null };
 let platforms = [];
-let coins = [];
-let trails = [];
 let score = 0;
-let cameraOffset = 0; // Tracks the camera's vertical position
-let bg, icLeft, icRight, platformImg; // Assets
+let gameOver = false; // Track if the game is over
+let platformBuffer = 100; // Buffer above the visible area to spawn platforms
+let memoryFragments = [];
+let collectedFragments = 0;
+let showStorySnippet = false;
+let currentSnippetIndex = -1;
+let playerImgRight; // Global variable for the right player image
+let playerImgLeft; // Global variable for the left player image
+let platformTexture; // Image for the platform texture
+let bgImage = []; // Background image
+let fragImage; // Global variable for the fragment image
+let fireImg; // Image behind the storySnippets
+let currentBgIndex = 0; // Track the current background image index
 
+let storySnippets = [
+    "Prometheus, the Titan of foresight, \n defied the gods to aid humanity.",
+    "'Take this sacred fire,' Prometheus whispered. \n 'But beware, it will draw wrath.'",
+    "As he descended Olympus, \n the heavens roared with anger.",
+    "Prometheus endured torment, \n yet his gift ignited humanity's future."
+];
 
 function preload() {
-    bg = loadImage('assets/images/bg.png'); // Background image
-    icLeft = loadImage('assets/images/Ic_left.png'); // Icarus facing left
-    icRight = loadImage('assets/images/Ic_right.png'); // Icarus facing right
-    platformImg = loadImage('assets/images/platform.jpg'); // Platform image 
+    playerImgRight = loadImage('assets/images/promRight.png'); // Path to the right facing image
+    playerImgLeft = loadImage('assets/images/promLeft.png');  // Path to left facing image
+    platformTexture = loadImage('assets/images/platform.jpg'); // Platform texture
+    fragImage = loadImage('assets/images/fire1.png'); // Load the fragment image
+    fireImg = loadImage('assets/images/fire1.png'); // Load image behind the storySnippets
+    bgImages = [
+        loadImage('assets/images/bg3_1.png'),
+        loadImage('assets/images/bg3_2.png'),
+        loadImage('assets/images/bg3_3.png'),
+        loadImage('assets/images/bg3_4.png'),
+        loadImage('assets/images/bg3_5.png')
+    ];
 }
-// setup executes once at the beginning
+
+/** 
+ * Setup the board and initalize the game
+*/
 function setup() {
-    createCanvas(600, 400); // Create a canvas of 600 pixels per 400 pixels
-    settings.gravity = createVector(0, 1);
-    player = new Player(settings, width / 2, height - 50, 40, 40, icLeft, icRight);
-
-    // Generate initial platforms and coins
-    generateMapSection(0, height);
+    createCanvas(500, 600);
+    initializeGame(); // Initialize the game state
 }
 
-// draw executes again and again (~60 fps)
-function draw() {
-    image(bg, 0, 0, width, height); // Draw background image
+// Initialize or reset the game state
+function initializeGame() {
+    settings.gravity = createVector(0, 0.5);
+    platforms = [];
+    memoryFragments = [];
+    score = 0;
+    gameOver = false;
+    collectedFragments = 0;
+    showStorySnippet = false;
+    currentSnippetIndex = -1;
+    deathPosition = null;
 
-    // Move the camera to follow the player only upward
-    if (player.pos.y < height / 2 + cameraOffset) {
-        cameraOffset = player.pos.y - height / 2;
+    // Generate initial platforms
+    for (let i = 0; i < 10; i++) {
+        let x = random(50, width - 100);
+        let y = height - i * 60; // Space out platforms vertically
+        platforms.push(new Platform(x, y, 80, 15));
     }
-    translate(0, -cameraOffset);
 
-    // Display score
-    fill(0);
-    textSize(18);
-    text(`Score: ${score}`, 10, cameraOffset + 30);
+    // Place player on top of the first platform
+    let firstPlatform = platforms[platforms.length - 1];
+    player = new Player(settings, firstPlatform.x + firstPlatform.w / 2 - 20, firstPlatform.y - 40, 40, 40);
+
+    // Place memory fragments on specific platforms
+    memoryFragments.push(100, 200, 300, 400); // Positions for fragments
+
+    loop(); // Restart the draw loop
+}
+
+function draw() {
+    if (showStorySnippet) {
+        displayStorySnippet();
+        return;
+    }
+
+    background(220);//Fallback background
+
+    // Draw the current background image
+    image(bgImages[currentBgIndex], 0, 0, width, height);
+
+    // Draw the score at the fixed screen position
+    drawScore();
+    displayCollectedFragments();
+
+    // Translate canvas based on player position (simulate scrolling)
+    let offsetY = max(0, height / 2 - player.pos.y);
+    translate(0, offsetY);
 
     // Update and display player
-    player.show();
     player.update(platforms);
+    player.show();
 
     // Update and display platforms
-    for (let platform of platforms) {
-        platform.draw();
+    for (let i = platforms.length - 1; i >= 0; i--) {
+        platforms[i].show();
+
+        // Remove platforms that move off-screen below the player
+        if (platforms[i].y > player.pos.y + height) {
+            platforms.splice(i, 1);
+        }
     }
 
-    // Update and display coins
-    for (let i = coins.length - 1; i >= 0; i--) {
-        coins[i].show();
-        if (player.collect(coins[i])) {
-            coins.splice(i, 1);
+    // Ensure platforms exist above the screen before they are visible
+    while (platforms[platforms.length - 1].y > player.pos.y - platformBuffer - height) {
+        let newX = random(50, width - 100);
+        let newY = platforms[platforms.length - 1].y - 60;
+        platforms.push(new Platform(newX, newY, 80, 15)); // Every new platform uses the texture
+    }
+
+    // Handle memory fragments and scoring
+    for (let i = memoryFragments.length - 1; i >= 0; i--) {
+        let fragmentY = height - memoryFragments[i] * 60;
+        //let fragmentY = -100; // Use for tests
+
+        // Only draw fragments within the player's view
+        if (fragmentY > player.pos.y - height && fragmentY < player.pos.y + height) {
+            // // Draw the fragment image
+            image(fragImage, width / 2 - 10, fragmentY, 40, 40);
+
+            // Check if the player collects the fragment
+            if (dist(player.pos.x + player.size.x / 2, player.pos.y + player.size.y / 2, width / 2, fragmentY + 10) < 30) {
+                memoryFragments.splice(i, 1);
+                collectedFragments++;
+                currentSnippetIndex++;
+                showStorySnippet = true;
+
+                // Change the background image
+                if (collectedFragments < bgImages.length) {
+                    currentBgIndex = collectedFragments;
+                }
+
+                break;
+            }
+        }
+    }
+
+    // Increment score as the player ascends
+    for (let platform of platforms) {
+        if (platform.y > player.pos.y + height / 2 && !platform.scored) {
+            platform.scored = true; // Mark platform as scored
             score++;
         }
     }
 
-    // Generate new platforms and coins as the player climbs
-    if (player.pos.y + cameraOffset < -height) {
-        generatePlatforms(cameraOffset - height, cameraOffset);
+    // Game over condition
+    if (player.pos.y > height + 100) {
+        gameOver = true;
+        displayGameOverScreen();
+        noLoop(); // Stop the draw loop
     }
 
-    // Remove old platforms and coins below the screen
-    platforms = platforms.filter(platform => platform.y > cameraOffset - height);
-    coins = coins.filter(coin => coin.y > cameraOffset - height);
-}
-
-// Generate platforms and coins
-function generatePlatforms(startY, endY) {
-    const sectionHeight = endY - startY;
-
-    // Determine the number of platforms dynamically based on height
-    const basePlatforms = 6; // Base number of platforms
-    const heightFactor = max(0.6, 1 - abs(cameraOffset) / 5000); // Reduce density with height
-    const numberOfPlatforms = floor(basePlatforms * heightFactor);
-    const gap = sectionHeight / numberOfPlatforms;
-
-    for (let i = 0; i < numberOfPlatforms; i++) {
-        let tries = 0;
-        let platformAdded = false;
-
-        while (tries < 10 && !platformAdded) {
-            tries++;
-
-            // Generate random positions for the platform
-            const platformX = random(50, width - 130);
-            const platformY = startY + i * gap + random(-20, 20);
-
-            // Ensure the platform does not overlap with existing platforms
-            let isValid = true;
-            for (let existing of platforms) {
-                if (dist(platformX, platformY, existing.x, existing.y) < 100) {
-                    isValid = false;
-                    break;
-                }
-            }
-
-            if (isValid) {
-                platforms.push(new Platform(platformX, platformY, platformImg));
-                platformAdded = true;
-
-                // Optionally add a coin near the platform
-                if (random(1) < 0.4 * heightFactor) {
-                    const coinX = platformX + random(-10, 40);
-                    const coinY = platformY - 30;
-                    coins.push(new Coin(coinX, coinY, 15));
-                }
-            }
-        }
+    // Victory Condition
+    if (collectedFragments === 4) {
+        displayVictoryScreen();
+        noLoop();
     }
+
+    // Handle game over logic
+    if (gameOver) {
+        displayGameOverScreen();
+        return;
+    }
+
+}
+
+// Draw the score at a fixed position on the screen
+function drawScore() {
+    push(); // Save the current drawing state
+    resetMatrix(); // Reset transformations to the default coordinate system
+    fill('black');
+    textSize(25);
+    textAlign(LEFT);
+    // Add a white outline to the text
+    stroke(255); // Set the stroke colour to black
+    strokeWeight(2); // Set the stroke thickness
+    text(`${score}`, 10, 30); // Always draw at the top-left corner
+    // text(`Fragments: ${collectedFragments}/4`, 10, 50);
+    pop(); // Restore the previous drawing state
+}
+
+// Display the story snippet
+function displayStorySnippet() {
+    background(0, 50);
+    image(fireImg, 0, 0, width, height); // Scale the image to cover the entire canvas
+    fill("#A4161A");
+    stroke(255); // Set the stroke colour to black
+    strokeWeight(2); // Set the stroke thickness
+    textAlign(CENTER, CENTER);
+    textSize(22);
+    text(storySnippets[currentSnippetIndex], width / 2, height / 2 - 20);
+    textSize(18);
+    text("\nPress 'C' to continue...", width / 2, height / 2 + 20);
+}
+
+// Display victory screen
+function displayVictoryScreen() {
+    textSize(32);
+    textAlign(CENTER, CENTER);
+    fill('black');
+    stroke(255); // Set the stroke color to black
+    strokeWeight(2); // Set the stroke thickness
+    text("Prometheus Delivered Fire to Humanity", width / 2, height / 2 - 50);
+    textSize(20);
+    text("But the gods' fury is eternal", width / 2, height / 2);
+    text("Press SPACE to reignite his journey", width / 2, height / 2 + 50);
+}
+
+function displayGameOverScreen() {
+    // Reset the transformation to the default (fixed screen position)
+    push(); // Save current transformation state
+    resetMatrix(); // Reset transformations to the default coordinate system
+
+    // Display the message in the center of the visible screen
+    textSize(32);
+    textAlign(CENTER);
+    fill('black');
+    stroke(255); // Black outline for better contrast
+    strokeWeight(2);
+    text("Prometheus Fell to Zeus' Fury", width / 2, height / 2 - 50);
+    textSize(20);
+    text("\nPress SPACE to try again", width / 2, height / 2 + 50);
+
+    pop(); // Restore the previous transformation state
 }
 
 
-// keyPressed executes when a key is pressed
+// keyPressed handles input
 function keyPressed() {
-    switch (key) {
-        case 'ArrowLeft':
-            player.move('left', true);
-            break;
-        case 'ArrowUp':
-            player.move('up', true);
-            break;
-        case 'ArrowRight':
-            player.move('right', true);
+    if (gameOver && key === ' ') {
+        initializeGame(); // Restart the game when space is pressed
+    }
+
+    if (showStorySnippet && key === 'c') {
+        showStorySnippet = false;
+    }
+
+    if (!gameOver) {
+        if (key === 'ArrowLeft') player.move('left', true); // Move left and update image
+        if (key === 'ArrowRight') player.move('right', true); // Move right and update image
     }
 }
 
-// keyReleased executes when a key is released
 function keyReleased() {
-    switch (key) {
-        case 'ArrowLeft':
-            player.move('left', false);
-            break;
-        case 'ArrowRight':
-            player.move('right', false);
+    if (!gameOver) {
+        if (key === 'ArrowLeft') player.move('left', false);// Stop moving left
+        if (key === 'ArrowRight') player.move('right', false);// Stop moving right
+    }
+}
+
+// Display collected fragments side by side
+function displayCollectedFragments() {
+    let fragmentSpacing = 45; // Space between fragment images
+    let startX = 10; // Start from left side of the screen
+    let yPos = 70; // Place below the score
+
+    for (let i = 0; i < collectedFragments; i++) {
+        image(fragImage, startX + i * fragmentSpacing, yPos, 40, 40); // Draw each fragment
     }
 }
 
 // Player class
 class Player {
-    constructor(settings, x, y, w, h, leftImg, rightImg) {
+    constructor(settings, x, y, w, h) {
         this.settings = settings;
         this.pos = createVector(x, y);
         this.vel = createVector(0, 0);
         this.acc = createVector(0, 0);
         this.size = createVector(w, h);
-        this.onGround = false;
-        this.facingRight = true;
-        this.leftImg = leftImg;
-        this.rightImg = rightImg;
+        this.currentImg = playerImgRight; // Default to right-facing image
     }
 
     show() {
-        imageMode(CENTER);
-        const img = this.facingRight ? this.rightImg : this.leftImg;
-        image(img, this.pos.x + this.size.x / 2, this.pos.y + this.size.y / 2, this.size.x, this.size.y);
+        let scaleFactor = 3; // Sets the scale of the image
+        let newWidth = this.size.x * scaleFactor;
+        let newHeight = this.size.y * scaleFactor;
+
+        image(this.currentImg, this.pos.x - (newWidth - this.size.x) / 2, this.pos.y - (newHeight - this.size.y) / 2, newWidth, newHeight);
     }
 
     update(platforms) {
@@ -165,47 +292,23 @@ class Player {
         this.pos.add(this.vel);
         this.acc.set(0, 0);
 
-        // Check for platform collisions
-        for (let platform of platforms) {
-            if (this.standOn(platform)) break;
-        }
+        // Horizontal boundary wrapping
+        if (this.pos.x > width) this.pos.x = 0;
+        if (this.pos.x < 0) this.pos.x = width;
 
-        // Leave a memory trail
-        if (this.vel.mag() > 0) {
-            trails.push(new Trail(this.pos.x, this.pos.y, this.size.x, this.size.y));
-        }
-
-        // Check if on a trail
-        for (let trail of trails) {
-            if (
-                this.pos.y + this.size.y >= trail.y &&
-                this.pos.y + this.size.y <= trail.y + 5 &&
-                this.pos.x + this.size.x > trail.x &&
-                this.pos.x < trail.x + trail.w
-            ) {
-                this.vel.y = 0;
-                this.onGround = true;
-                this.pos.y = trail.y - this.size.y; // Align with the trail
+        // Check for collisions with platforms (only when falling)
+        if (this.vel.y > 0) {
+            for (let platform of platforms) {
+                if (
+                    this.pos.x + this.size.x > platform.x &&
+                    this.pos.x < platform.x + platform.w &&
+                    this.pos.y + this.size.y <= platform.y &&
+                    this.pos.y + this.size.y + this.vel.y >= platform.y
+                ) {
+                    this.vel.y = -10; // Bounce up
+                    break;
+                }
             }
-        }
-
-        // Screen borders
-        if (this.pos.x < 0) {
-            this.pos.x = 0;
-            this.vel.x = 0;
-        }
-        if (this.pos.x + this.size.x > width) {
-            this.pos.x = width - this.size.x;
-            this.vel.x = 0;
-        }
-
-        // Prevent falling below the screen
-        if (this.pos.y + this.size.y >= height) {
-            this.pos.y = height - this.size.y;
-            this.vel.y = 0;
-            this.onGround = true;
-        } else {
-            this.onGround = false;
         }
     }
 
@@ -213,93 +316,27 @@ class Player {
         const speed = 5;
         if (direction === 'left') {
             this.vel.x = isPressed ? -speed : 0;
-            this.facingRight = false;
+            this.currentImg = isPressed ? playerImgLeft : this.currentImg; // Switch to left facing image
         }
         if (direction === 'right') {
             this.vel.x = isPressed ? speed : 0;
-            this.facingRight = true;
+            this.currentImg = isPressed ? playerImgRight : this.currentImg; // Switch to right facing image
         }
-        if (direction === 'up' && this.onGround) {
-            this.vel.y = -15; // Jump force
-            this.onGround = false;
-        }
-    }
-
-    standOn(platform) {
-        // Check collision with any platform (platforms or trail)
-        if (
-            this.pos.y + this.size.y >= platform.y &&
-            this.pos.y + this.size.y <= platform.y + 5 &&
-            this.pos.x + this.size.x > platform.x &&
-            this.pos.x < platform.x + platform.w &&
-            this.vel.y >= 0
-        ) {
-            this.vel.y = 0;
-            this.onGround = true;
-            this.pos.y = platform.y - this.size.y; // Align with the platform
-            return true;
-        }
-        return false;
-    }
-
-    collect(coin) {
-        return dist(this.pos.x + this.size.x / 2, this.pos.y + this.size.y / 2, coin.x, coin.y) < this.size.x / 2 + coin.radius;
     }
 }
 
 // Platform class
 class Platform {
-    constructor(x, y, img) {
-        this.x = x;
-        this.y = y;
-        this.w = 80;
-        this.h = 20;
-        this.img = img;
-    }
-
-    draw() {
-        image(this.img, this.x, this.y, this.w, this.h);
-    }
-}
-
-// Coin class
-class Coin {
-    constructor(x, y, radius) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-    }
-
-    show() {
-        fill(255, 215, 0);
-        ellipse(this.x, this.y, this.radius * 2);
-    }
-}
-
-// Trail class
-class Trail {
     constructor(x, y, w, h) {
         this.x = x;
         this.y = y;
         this.w = w;
         this.h = h;
-        this.lifetime = 60; // Duration in frames
+        this.scored = false; // Tracks if the platform has contributed to the score
     }
 
     show() {
-        fill(100, 255, 100, map(this.lifetime, 0, 60, 0, 255)); // Fades over time
-        rect(this.x, this.y, this.w, this.h);
-    }
-
-    update() {
-        this.lifetime--; // Decrease lifetime
-    }
-
-    resetLifetime() {
-        this.lifetime = 120; // Reset lifetime when stood on
-    }
-
-    isFaded() {
-        return this.lifetime <= 0;
+        // Draw the platform using the texture
+        image(platformTexture, this.x, this.y, this.w, this.h);
     }
 }
