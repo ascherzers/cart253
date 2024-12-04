@@ -1,10 +1,12 @@
 # Greek Myth Jump
 
-Variation Number 3
+Variation Jam
 
 Aran Scherzer
 
-[View this project online](URL)
+[View Variation 1 project online](js/script1.js)
+[View Variation 2 online](js/script2.js)
+[View Variation 3 online](js/script3.js)
 
 ## Description
 
