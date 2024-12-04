@@ -1,3 +1,23 @@
+/**
+ * Greek Myth Jump
+ * Aran Scherzer
+ * 
+ * A game where the player controls a frog and tries to eat flies that
+ * pass by launching the frog's tongue.
+ * A game where the player controls a greek legend from the myths and tries to 
+ * fufill their destiny by jumping up and collecting memeory fragments to win the game.
+ * 
+ * Controls: 
+ * - Left arrow key to move left
+ * - Right arrow key to move right
+ * - Space to restart when prompted
+ * - C to continue when prompted
+ * 
+ * Uses:
+ * p5.js
+ * https://p5js.org
+ */
+
 // Global variables
 let player;
 let settings = { gravity: null };
@@ -27,6 +47,10 @@ let storySnippets = [
     "Beware, Icarus.\n Beyond the final platform lies the sun, \n and its embrace will burn you."
 ];
 
+/** 
+ * Preload images for the game,
+ * Called before setup to make sure all resources are available
+ */
 function preload() {
     playerImgRight = loadImage('assets/images/IcRight.png'); // Path to the right facing image
     playerImgLeft = loadImage('assets/images/IcLeft.png');  // Path to left facing image
@@ -38,13 +62,17 @@ function preload() {
 
 /** 
  * Setup the board and initalize the game
+ * Called when the game starts
 */
 function setup() {
     createCanvas(500, 600);
     initializeGame(); // Initialize the game state
 }
 
-// Initialize or reset the game state
+/** 
+ * Initialize or reset game state 
+ * Sets up all variables & entintes needed
+ */
 function initializeGame() {
     settings.gravity = createVector(0, 0.5);
     platforms = [];
@@ -73,13 +101,17 @@ function initializeGame() {
     loop(); // Restart the draw loop
 }
 
+/** 
+ * Main game loop
+ * Handles rendering and game logic
+ */
 function draw() {
     if (showStorySnippet) {
         displayStorySnippet();
         return;
     }
 
-    background(220);//Fallback background
+    background(220); // Fallback background
 
     // Draw the background image
     image(bgImage, 0, 0, width, height); // Scale the background to the size of the canvas
@@ -88,7 +120,7 @@ function draw() {
     drawScore();
     displayCollectedFragments();
 
-    // Translate canvas based on player position (simulate scrolling)
+    // Translate canvas based on player position
     let offsetY = max(0, height / 2 - player.pos.y);
     translate(0, offsetY);
 
@@ -100,13 +132,13 @@ function draw() {
     for (let i = platforms.length - 1; i >= 0; i--) {
         platforms[i].show();
 
-        // Remove platforms that move off-screen below the player
+        // Remove platforms that move off screen below the player
         if (platforms[i].y > player.pos.y + height) {
             platforms.splice(i, 1);
         }
     }
 
-    // Ensure platforms exist above the screen before they are visible
+    // Make sure platforms exist above the screen before they are visible
     while (platforms[platforms.length - 1].y > player.pos.y - platformBuffer - height) {
         let newX = random(50, width - 100);
         let newY = platforms[platforms.length - 1].y - 60;
@@ -116,7 +148,7 @@ function draw() {
     // Handle memory fragments and scoring
     for (let i = memoryFragments.length - 1; i >= 0; i--) {
         let fragmentY = height - memoryFragments[i] * 60;
-        //let fragmentY = -100; // Use for tests
+
         // Only draw fragments within the player's view
         if (fragmentY > player.pos.y - height && fragmentY < player.pos.y + height) {
             // // Draw the fragment image
@@ -133,7 +165,7 @@ function draw() {
         }
     }
 
-    // Increment score as the player ascends
+    // Track score as the player goes up
     for (let platform of platforms) {
         if (platform.y > player.pos.y + height / 2 && !platform.scored) {
             platform.scored = true; // Mark platform as scored
@@ -150,7 +182,7 @@ function draw() {
         noLoop(); // Stop the draw loop
     }
 
-    // Draw the end barrier (giant orange rectangle)
+    // Draw the end barrier giant orange rectangle to symbolise sun
     fill(255, 165, 0); // Orange color
     noStroke();
     rect(0, endBarrierY, width, endBarrierHeight);
@@ -168,27 +200,32 @@ function draw() {
 
 }
 
-// Draw the score at a fixed position on the screen
+/** 
+ * Draw the score
+ * Make sure the score is visible to player
+ */
 function drawScore() {
     push(); // Save the current drawing state
-    resetMatrix(); // Reset transformations to the default coordinate system
+    resetMatrix(); // Reset transformations to the default 
     fill('white');
     textSize(25);
     textAlign(LEFT);
     // Add a white outline to the text
     stroke(0); // Set the stroke colour to black
     strokeWeight(2); // Set the stroke thickness
-    text(`${score}`, 10, 30); // Always draw at the top-left corner
-    // text(`Fragments: ${collectedFragments}/4`, 10, 50);
+    text(`${score}`, 10, 30); // Always draw at the top left corner
     pop(); // Restore the previous drawing state
 }
 
-// Display the story snippet
+/** 
+ * Display story snippet 
+ * Called when a memory fragment is collected
+ */
 function displayStorySnippet() {
     background(0, 50);
     image(wingImg, 0, 0, width, height); // Scale the image to cover the entire canvas
     fill("#A4161A");
-    stroke(255); // Set the stroke colour to black
+    stroke(255); // Set the stroke colour to white
     strokeWeight(2); // Set the stroke thickness
     textAlign(CENTER, CENTER);
     textSize(22);
@@ -197,25 +234,30 @@ function displayStorySnippet() {
     text("\nPress 'C' to continue...", width / 2, height / 2 + 20);
 }
 
-// Display victory screen
+/** 
+ * Display victory screen when player wins
+ * Called when all memory fragments are collected
+ */
 function displayVictoryScreen() {
     textSize(32);
     textAlign(CENTER, CENTER);
     fill('white');
-    stroke(0); // Set the stroke color to black
+    stroke(0); // Set the stroke colour to black
     strokeWeight(2); // Set the stroke thickness
     text("You escaped your fate", width / 2, height / 2 - 50);
     textSize(20);
     text("Congratulations", width / 2, height / 2);
-    text("Press SPACE to play again", width / 2, height / 2 + 50);
 }
 
+/** 
+ * Display game over screen when player loses 
+ * Called when player falls off screen or hits end barrier
+ */
 function displayGameOverScreen() {
-    // Reset the transformation to the default (fixed screen position)
+    // Reset the transformation to the default
     push(); // Save current transformation state
-    resetMatrix(); // Reset transformations to the default coordinate system
-
-    // Display the message in the center of the visible screen
+    resetMatrix(); // Reset transformations to the default 
+    // Display the message in the center of the screen
     textSize(32);
     textAlign(CENTER);
     fill('white');
@@ -224,12 +266,14 @@ function displayGameOverScreen() {
     text("Icarus Flew Too Close \n To The Sun", width / 2, height / 2 - 50);
     textSize(20);
     text("\nPress SPACE to restart", width / 2, height / 2 + 50);
-
     pop(); // Restore the previous transformation state
 }
 
 
-// keyPressed handles input
+/** 
+ * Handle keyboard input when keys are pressed 
+ * Manages player movement and game state transitions
+ */
 function keyPressed() {
     if (gameOver && key === ' ') {
         initializeGame(); // Restart the game when space is pressed
@@ -245,6 +289,10 @@ function keyPressed() {
     }
 }
 
+/** 
+ * Handle keyboard input when keys are released
+ * Stops player movement when key isn't pressed anymore
+ */
 function keyReleased() {
     if (!gameOver) {
         if (key === 'ArrowLeft') player.move('left', false);// Stop moving left
@@ -252,18 +300,24 @@ function keyReleased() {
     }
 }
 
-// New function to display collected fragments side by side
+/** 
+ * Display collected memory fragments under score
+ * Shows fragments as visual indicators of progress
+ */
 function displayCollectedFragments() {
     let fragmentSpacing = 45; // Space between fragment images
-    let startX = 10; // Start from left side of the screen
-    let yPos = 70; // Place below the score
+    let startX = 10; // Starts from left side of the screen
+    let yPos = 70; // Places below the score
 
     for (let i = 0; i < collectedFragments; i++) {
-        image(fragImage, startX + i * fragmentSpacing, yPos, 40, 40); // Draw each fragment
+        image(fragImage, startX + i * fragmentSpacing, yPos, 40, 40); // Draws each fragment
     }
 }
 
-// Player class
+/** 
+ * Player class to represent main character
+ * Handles player's movement, physics, and appearance
+ */
 class Player {
     constructor(settings, x, y, w, h) {
         this.settings = settings;
@@ -271,9 +325,13 @@ class Player {
         this.vel = createVector(0, 0);
         this.acc = createVector(0, 0);
         this.size = createVector(w, h);
-        this.currentImg = playerImgRight; // Default to right-facing image
+        this.currentImg = playerImgRight; // Default to right facing image
     }
 
+    /**
+    * Display player on the canvas
+    * The player is drawn as an image scaled to fit
+    */
     show() {
         let scaleFactor = 3; // Sets the scale of the image
         let newWidth = this.size.x * scaleFactor;
@@ -282,6 +340,10 @@ class Player {
         image(this.currentImg, this.pos.x - (newWidth - this.size.x) / 2, this.pos.y - (newHeight - this.size.y) / 2, newWidth, newHeight);
     }
 
+    /** 
+         * Update player's position and handle collisions
+         * Applies gravity and detects platform interactions
+         */
     update(platforms) {
         this.acc.add(this.settings.gravity);
         this.vel.add(this.acc);
@@ -308,6 +370,10 @@ class Player {
         }
     }
 
+    /**
+     * Move player in a specific direction
+     * Updates player's velocity and image based on input
+     */
     move(direction, isPressed) {
         const speed = 5;
         if (direction === 'left') {
@@ -321,7 +387,10 @@ class Player {
     }
 }
 
-// Platform class
+/** 
+ * Platform class to represent platforms
+ * Handles appearance and scoring logic of platforms
+ */
 class Platform {
     constructor(x, y, w, h) {
         this.x = x;
@@ -331,8 +400,12 @@ class Platform {
         this.scored = false; // Tracks if the platform has contributed to the score
     }
 
+    /**
+     * Display platform on the canvas 
+     * Platforms are drawn as rectangles
+     */
     show() {
-        fill("#FDB813"); // Highlight final platform
+        fill("#FDB813");
         stroke(255); // Add outline
         strokeWeight(3);
         rect(this.x, this.y, this.w, this.h);

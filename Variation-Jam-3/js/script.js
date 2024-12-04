@@ -1,14 +1,34 @@
+/**
+ * Greek Myth Jump
+ * Aran Scherzer
+ * 
+ * A game where the player controls a frog and tries to eat flies that
+ * pass by launching the frog's tongue.
+ * A game where the player controls a greek legend from the myths and tries to 
+ * fufill their destiny by jumping up and collecting memeory fragments to win the game.
+ * 
+ * Controls: 
+ * - Left arrow key to move left
+ * - Right arrow key to move right
+ * - Space to restart when prompted
+ * - C to continue when prompted
+ * 
+ * Uses:
+ * p5.js
+ * https://p5js.org
+ */
+
 // Global variables
 let player;
-let settings = { gravity: null };
-let platforms = [];
-let score = 0;
+let settings = { gravity: null }; // Settings for game physics
+let platforms = []; // Array of platforms
+let score = 0; // Player's score
 let gameOver = false; // Track if the game is over
 let platformBuffer = 100; // Buffer above the visible area to spawn platforms
-let memoryFragments = [];
-let collectedFragments = 0;
-let showStorySnippet = false;
-let currentSnippetIndex = -1;
+let memoryFragments = []; // Array to hold positions of memory fragments
+let collectedFragments = 0; // Count of collected fragments
+let showStorySnippet = false; // Flag to show the story snippet
+let currentSnippetIndex = -1; // Index of the current story snippet
 let playerImgRight; // Global variable for the right player image
 let playerImgLeft; // Global variable for the left player image
 let platformTexture; // Image for the platform texture
@@ -24,6 +44,9 @@ let storySnippets = [
     "Prometheus endured torment, \n yet his gift ignited humanity's future."
 ];
 
+/** 
+ * Preloads images before the game starts
+ */
 function preload() {
     playerImgRight = loadImage('assets/images/prRight.png'); // Path to the right facing image
     playerImgLeft = loadImage('assets/images/prLeft.png');  // Path to left facing image
@@ -47,7 +70,9 @@ function setup() {
     initializeGame(); // Initialize the game state
 }
 
-// Initialize or reset the game state
+/** 
+ * Resets game to its initial state and generates the first set of platforms
+ */
 function initializeGame() {
     settings.gravity = createVector(0, 0.5);
     platforms = [];
@@ -76,6 +101,9 @@ function initializeGame() {
     loop(); // Restart the draw loop
 }
 
+/** 
+ * Main game loop that updates screen every frame
+ */
 function draw() {
     if (showStorySnippet) {
         displayStorySnippet();
@@ -109,7 +137,7 @@ function draw() {
         }
     }
 
-    // Ensure platforms exist above the screen before they are visible
+    // make sure platforms exist above the screen before they are visible
     while (platforms[platforms.length - 1].y > player.pos.y - platformBuffer - height) {
         let newX = random(50, width - 100);
         let newY = platforms[platforms.length - 1].y - 60;
@@ -143,7 +171,7 @@ function draw() {
         }
     }
 
-    // Increment score as the player ascends
+    // Increase score as the player goes up
     for (let platform of platforms) {
         if (platform.y > player.pos.y + height / 2 && !platform.scored) {
             platform.scored = true; // Mark platform as scored
@@ -171,7 +199,9 @@ function draw() {
 
 }
 
-// Draw the score at a fixed position on the screen
+/** 
+ * Displays player's score at the top left corner of the screen
+ */
 function drawScore() {
     push(); // Save the current drawing state
     resetMatrix(); // Reset transformations to the default coordinate system
@@ -186,7 +216,9 @@ function drawScore() {
     pop(); // Restore the previous drawing state
 }
 
-// Display the story snippet
+/** 
+ * Displays story snippets when triggered
+ */
 function displayStorySnippet() {
     background(0, 50);
     image(fireImg, 0, 0, width, height); // Scale the image to cover the entire canvas
@@ -200,14 +232,16 @@ function displayStorySnippet() {
     text("\nPress 'C' to continue...", width / 2, height / 2 + 20);
 }
 
-// Display victory screen
+/** 
+ * Displays victory screen when the player wins
+ */
 function displayVictoryScreen() {
     push();
     resetMatrix(); // Reset transformations to the default coordinate system
     textSize(26);
     textAlign(CENTER, CENTER);
     fill('red');
-    stroke(0); // Set the stroke color to black
+    stroke(0); // Set the stroke colour to black
     strokeWeight(2); // Set the stroke thickness
     text("Prometheus Delivered Fire to Humanity", width / 2, height / 2 - 50);
     textSize(22);
@@ -217,6 +251,9 @@ function displayVictoryScreen() {
     pop();
 }
 
+/** 
+ * Displays game over screen when player fails
+ */
 function displayGameOverScreen() {
     // Reset the transformation to the default (fixed screen position)
     push(); // Save current transformation state
@@ -236,7 +273,9 @@ function displayGameOverScreen() {
 }
 
 
-// keyPressed handles input
+/** 
+ * Handles keyboard input for gameplay actions
+ */
 function keyPressed() {
     if ((gameOver || (player.pos.y > height + 100 && collectedFragments === 4)) && key === ' ') {
         initializeGame(); // Restart the game when space is pressed
@@ -252,6 +291,9 @@ function keyPressed() {
     }
 }
 
+/** 
+ * Handles key releases to stop player movement
+ */
 function keyReleased() {
     if (!gameOver) {
         if (key === 'ArrowLeft') player.move('left', false);// Stop moving left
@@ -259,7 +301,9 @@ function keyReleased() {
     }
 }
 
-// Display collected fragments side by side
+/** 
+ * Displays collected memory fragments at a fixed position on the screen
+ */
 function displayCollectedFragments() {
     let fragmentSpacing = 45; // Space between fragment images
     let startX = 10; // Start from left side of the screen
@@ -270,7 +314,9 @@ function displayCollectedFragments() {
     }
 }
 
-// Player class
+/** 
+ * Class representing player and their behavior
+ */
 class Player {
     constructor(settings, x, y, w, h) {
         this.settings = settings;
@@ -281,6 +327,9 @@ class Player {
         this.currentImg = playerImgRight; // Default to right-facing image
     }
 
+    /**
+   * Displays player on the canvas
+   */
     show() {
         let scaleFactor = 3; // Sets the scale of the image
         let newWidth = this.size.x * scaleFactor;
@@ -289,6 +338,9 @@ class Player {
         image(this.currentImg, this.pos.x - (newWidth - this.size.x) / 2, this.pos.y - (newHeight - this.size.y) / 2, newWidth, newHeight);
     }
 
+    /**
+     * Updates player's position and handles collisions
+     */
     update(platforms) {
         this.acc.add(this.settings.gravity);
         this.vel.add(this.acc);
@@ -315,6 +367,9 @@ class Player {
         }
     }
 
+    /**
+    * Handles player movement in a given direction
+    */
     move(direction, isPressed) {
         const speed = 5;
         if (direction === 'left') {
@@ -328,7 +383,9 @@ class Player {
     }
 }
 
-// Platform class
+/** 
+ * Class representing a platform in the game
+ */
 class Platform {
     constructor(x, y, w, h) {
         this.x = x;
@@ -338,6 +395,9 @@ class Platform {
         this.scored = false; // Tracks if the platform has contributed to the score
     }
 
+    /**
+     * Displays platform on the canvas
+     */
     show() {
         // Draw the platform using the texture
         image(platformTexture, this.x, this.y, this.w, this.h);

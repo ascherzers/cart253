@@ -1,3 +1,23 @@
+/**
+ * Greek Myth Jump
+ * Aran Scherzer
+ * 
+ * A game where the player controls a frog and tries to eat flies that
+ * pass by launching the frog's tongue.
+ * A game where the player controls a greek legend from the myths and tries to 
+ * fufill their destiny by jumping up and collecting memeory fragments to win the game.
+ * 
+ * Controls: 
+ * - Left arrow key to move left
+ * - Right arrow key to move right
+ * - Space to restart when prompted
+ * - C to continue when prompted
+ * 
+ * Uses:
+ * p5.js
+ * https://p5js.org
+ */
+
 // Global variables
 let player;
 let settings = { gravity: null };
@@ -27,6 +47,9 @@ let storySnippets = [
     "Beware, Orpheus.\n One glance back, and all will be lost."
 ];
 
+/** 
+ * Preloads game assets before setup is called
+ */
 function preload() {
     playerImgRight = loadImage('assets/images/opRight.png'); // Path to the right facing image
     playerImgLeft = loadImage('assets/images/opLeft.png');  // Path to left facing image
@@ -37,14 +60,16 @@ function preload() {
 }
 
 /** 
- * Setup the board and initalize the game
-*/
+ * Sets up game canvas and initializes game state
+ */
 function setup() {
     createCanvas(500, 600);
     initializeGame(); // Initialize the game state
 }
 
-// Initialize or reset the game state
+/** 
+ * Initializes or resets game state
+ */
 function initializeGame() {
     settings.gravity = createVector(0, 0.5);
     platforms = [];
@@ -73,6 +98,9 @@ function initializeGame() {
     loop(); // Restart the draw loop
 }
 
+/** 
+ * Handles main game loop, including rendering and logic
+ */
 function draw() {
     if (showStorySnippet) {
         displayStorySnippet();
@@ -88,7 +116,7 @@ function draw() {
     drawScore();
     displayCollectedFragments();
 
-    // Translate canvas based on player position (simulate scrolling)
+    //simulate scrolling
     let offsetY = max(0, height / 2 - player.pos.y);
     translate(0, offsetY);
 
@@ -100,7 +128,7 @@ function draw() {
     for (let i = platforms.length - 1; i >= 0; i--) {
         platforms[i].show();
 
-        // Remove platforms that move off-screen below the player
+        // Remove platforms that move off screen below the player
         if (platforms[i].y > player.pos.y + height) {
             platforms.splice(i, 1);
         }
@@ -186,7 +214,9 @@ function draw() {
 
 }
 
-// Draw the score at a fixed position on the screen
+/** 
+ * Draws the player's current score on the screen
+ */
 function drawScore() {
     push(); // Save the current drawing state
     resetMatrix(); // Reset transformations to the default coordinate system
@@ -201,7 +231,9 @@ function drawScore() {
     pop(); // Restore the previous drawing state
 }
 
-// Display the story snippet
+/** 
+ * Displays current story snippet when triggered
+ */
 function displayStorySnippet() {
     background(0, 50);
     image(lyreImg, 0, 0, width, height); // Scale the image to cover the entire canvas
@@ -215,8 +247,12 @@ function displayStorySnippet() {
     text("\nPress 'C' to continue...", width / 2, height / 2 + 20);
 }
 
-// Display victory screen
+/** 
+ * Displays victory screen when player wins the game
+ */
 function displayVictoryScreen() {
+    push(); // Save current transformation state
+    resetMatrix(); // Reset transformations to the default coordinate system
     textSize(32);
     textAlign(CENTER, CENTER);
     fill('white');
@@ -225,14 +261,16 @@ function displayVictoryScreen() {
     text("Orpheus Escaped the Underworld", width / 2, height / 2 - 50);
     textSize(20);
     text("But did Eurydice follow?", width / 2, height / 2);
-    text("Press SPACE to play again", width / 2, height / 2 + 50);
+    pop(); // Restore the previous transformation state
 }
 
+/** 
+ * Displays game over screen when player loses
+ */
 function displayGameOverScreen() {
     // Reset the transformation to the default (fixed screen position)
     push(); // Save current transformation state
     resetMatrix(); // Reset transformations to the default coordinate system
-
     // Display the message in the center of the visible screen
     textSize(32);
     textAlign(CENTER);
@@ -242,12 +280,13 @@ function displayGameOverScreen() {
     text("Orpheus Looked Back \n Against Better Judgment", width / 2, height / 2 - 50);
     textSize(20);
     text("\nPress SPACE to restart", width / 2, height / 2 + 50);
-
     pop(); // Restore the previous transformation state
 }
 
 
-// keyPressed handles input
+/** 
+ * Handles keyboard input for gameplay actions
+ */
 function keyPressed() {
     if (gameOver && key === ' ') {
         initializeGame(); // Restart the game when space is pressed
@@ -263,6 +302,9 @@ function keyPressed() {
     }
 }
 
+/** 
+ * Handles key releases to stop player movement
+ */
 function keyReleased() {
     if (!gameOver) {
         if (key === 'ArrowLeft') player.move('left', false);// Stop moving left
@@ -270,7 +312,9 @@ function keyReleased() {
     }
 }
 
-// New function to display collected fragments side by side
+/** 
+ * Displays collected memory fragments at a fixed position on the screen
+ */
 function displayCollectedFragments() {
     let fragmentSpacing = 45; // Space between fragment images
     let startX = 10; // Start from left side of the screen
@@ -281,7 +325,9 @@ function displayCollectedFragments() {
     }
 }
 
-// Player class
+/** 
+ * Class representing player and their behavior
+ */
 class Player {
     constructor(settings, x, y, w, h) {
         this.settings = settings;
@@ -292,6 +338,9 @@ class Player {
         this.currentImg = playerImgRight; // Default to right-facing image
     }
 
+    /**
+    * Displays player on the canvas
+    */
     show() {
         let scaleFactor = 3; // Sets the scale of the image
         let newWidth = this.size.x * scaleFactor;
@@ -300,6 +349,9 @@ class Player {
         image(this.currentImg, this.pos.x - (newWidth - this.size.x) / 2, this.pos.y - (newHeight - this.size.y) / 2, newWidth, newHeight);
     }
 
+    /**
+     * Updates player's position and handles collisions
+     */
     update(platforms) {
         this.acc.add(this.settings.gravity);
         this.vel.add(this.acc);
@@ -334,7 +386,9 @@ class Player {
         }
     }
 
-
+    /** 
+     * Handles player movement in a given direction
+     */
     move(direction, isPressed) {
         const speed = 5;
         if (direction === 'left') {
@@ -348,7 +402,9 @@ class Player {
     }
 }
 
-// Platform class
+/** 
+ * Class representing a platform in the game
+ */
 class Platform {
     constructor(x, y, w, h) {
         this.x = x;
@@ -359,6 +415,9 @@ class Platform {
         this.jumpCount = 0; // Tracks how many times the player has jumped on this platform
     }
 
+    /**
+     * Displays platform on the canvas
+     */
     show() {
         if (this === platforms[499]) {
             fill('gold'); // Highlight final platform
@@ -373,5 +432,3 @@ class Platform {
         }
     }
 }
-
-
