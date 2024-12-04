@@ -25,8 +25,8 @@ let storySnippets = [
 ];
 
 function preload() {
-    playerImgRight = loadImage('assets/images/promRight.png'); // Path to the right facing image
-    playerImgLeft = loadImage('assets/images/promLeft.png');  // Path to left facing image
+    playerImgRight = loadImage('assets/images/prRight.png'); // Path to the right facing image
+    playerImgLeft = loadImage('assets/images/prLeft.png');  // Path to left facing image
     platformTexture = loadImage('assets/images/platform.jpg'); // Platform texture
     fragImage = loadImage('assets/images/fire1.png'); // Load the fragment image
     fireImg = loadImage('assets/images/fire1.png'); // Load image behind the storySnippets
@@ -118,8 +118,8 @@ function draw() {
 
     // Handle memory fragments and scoring
     for (let i = memoryFragments.length - 1; i >= 0; i--) {
+
         let fragmentY = height - memoryFragments[i] * 60;
-        //let fragmentY = -100; // Use for tests
 
         // Only draw fragments within the player's view
         if (fragmentY > player.pos.y - height && fragmentY < player.pos.y + height) {
@@ -151,17 +151,16 @@ function draw() {
         }
     }
 
-    // Game over condition
-    if (player.pos.y > height + 100) {
+    // Victory Condition
+    if (player.pos.y > height + 100 && collectedFragments === 4) {
+        playerHasJumpedOff = true;
+        displayVictoryScreen();
+        noLoop(); // Stop the draw loop
+    } // Game over condition
+    else if (player.pos.y > height + 100) {
         gameOver = true;
         displayGameOverScreen();
         noLoop(); // Stop the draw loop
-    }
-
-    // Victory Condition
-    if (collectedFragments === 4) {
-        displayVictoryScreen();
-        noLoop();
     }
 
     // Handle game over logic
@@ -176,11 +175,11 @@ function draw() {
 function drawScore() {
     push(); // Save the current drawing state
     resetMatrix(); // Reset transformations to the default coordinate system
-    fill('black');
+    fill('red');
     textSize(25);
     textAlign(LEFT);
     // Add a white outline to the text
-    stroke(255); // Set the stroke colour to black
+    stroke(0); // Set the stroke colour to black
     strokeWeight(2); // Set the stroke thickness
     text(`${score}`, 10, 30); // Always draw at the top-left corner
     // text(`Fragments: ${collectedFragments}/4`, 10, 50);
@@ -191,8 +190,8 @@ function drawScore() {
 function displayStorySnippet() {
     background(0, 50);
     image(fireImg, 0, 0, width, height); // Scale the image to cover the entire canvas
-    fill("#A4161A");
-    stroke(255); // Set the stroke colour to black
+    fill('red');
+    stroke(0); // Set the stroke colour to black
     strokeWeight(2); // Set the stroke thickness
     textAlign(CENTER, CENTER);
     textSize(22);
@@ -203,15 +202,19 @@ function displayStorySnippet() {
 
 // Display victory screen
 function displayVictoryScreen() {
-    textSize(32);
+    push();
+    resetMatrix(); // Reset transformations to the default coordinate system
+    textSize(26);
     textAlign(CENTER, CENTER);
-    fill('black');
-    stroke(255); // Set the stroke color to black
+    fill('red');
+    stroke(0); // Set the stroke color to black
     strokeWeight(2); // Set the stroke thickness
     text("Prometheus Delivered Fire to Humanity", width / 2, height / 2 - 50);
-    textSize(20);
-    text("But the gods' fury is eternal", width / 2, height / 2);
+    textSize(22);
+    text("His leap echoes through eternity", width / 2, height / 2);
+    textSize(15);
     text("Press SPACE to reignite his journey", width / 2, height / 2 + 50);
+    pop();
 }
 
 function displayGameOverScreen() {
@@ -222,8 +225,8 @@ function displayGameOverScreen() {
     // Display the message in the center of the visible screen
     textSize(32);
     textAlign(CENTER);
-    fill('black');
-    stroke(255); // Black outline for better contrast
+    fill('red');
+    stroke(0); // Black outline for better contrast
     strokeWeight(2);
     text("Prometheus Fell to Zeus' Fury", width / 2, height / 2 - 50);
     textSize(20);
@@ -235,7 +238,7 @@ function displayGameOverScreen() {
 
 // keyPressed handles input
 function keyPressed() {
-    if (gameOver && key === ' ') {
+    if ((gameOver || (player.pos.y > height + 100 && collectedFragments === 4)) && key === ' ') {
         initializeGame(); // Restart the game when space is pressed
     }
 
