@@ -4,9 +4,11 @@ Variation Jam
 
 Aran Scherzer
 
-[View Variation 1 project online](js/script1.js)
-[View Variation 2 online](js/script2.js)
-[View Variation 3 online](js/script3.js)
+[View Variation 1 project online](Variation-Jam-1/js/script1.js)
+
+[View Variation 2 online](Variation-Jam-2/js/script2.js)
+
+[View Variation 3 online](Variation-Jam-3/js/script3.js)
 
 ## Description
 
