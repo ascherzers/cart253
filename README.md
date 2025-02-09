@@ -4,11 +4,11 @@ Variation Jam
 
 Aran Scherzer
 
-[View Variation 1 project online](https://ascherzers.github.io/cart253/Variation-Jam-1/index.html)
+[View Variation 1 Icarus online](https://ascherzers.github.io/cart253/Variation-Jam-1/index.html)
 
-[View Variation 2 project online](https://ascherzers.github.io/cart253/Variation-Jam-2/index.html)
+[View Variation 2 Orpheus online](https://ascherzers.github.io/cart253/Variation-Jam-2/index.html)
 
-[View Variation 3 project online](https://ascherzers.github.io/cart253/Variation-Jam-3/index.html)
+[View Variation 3 Prometheus online](https://ascherzers.github.io/cart253/Variation-Jam-3/index.html)
 
 ## Description
 
